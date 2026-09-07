@@ -7,7 +7,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Cal Coach" />
-  <title>Calisthenics Coach V2</title>
+  <meta name="description" content="Persönlicher Calisthenics Coach: Training, Ernährung, Progression und Statistik." />
+  <title>Calisthenics Coach V2.1</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <link rel="stylesheet" href="styles.css" />
@@ -15,7 +16,7 @@
 <body>
   <header class="topbar">
     <div>
-      <div class="eyebrow">Personal Coach · V2</div>
+      <div class="eyebrow">Personal Coach · V2.1</div>
       <h1>Calisthenics Coach</h1>
     </div>
     <div class="top-actions">
@@ -24,13 +25,13 @@
     </div>
   </header>
 
-  <main id="app" class="app-shell">
+  <main class="app-shell">
     <section id="today" class="view active" data-view>
       <article class="hero card">
         <div>
-          <div class="eyebrow">Mission</div>
+          <div class="eyebrow">Deine Mission</div>
           <h2>Maximale Kraft → Muskeln → shredded → Handstand-Skills</h2>
-          <p>34 J. · 180 cm · Start 87 kg · Ziel: starke relative Kraft, V-Taper, freier HSPU und später Human Flag.</p>
+          <p>34 J. · 180 cm · Start 87 kg · 3 Trainingstage maximal · Park + Zuhause.</p>
         </div>
         <div class="hero-stats">
           <div><span id="heroWeight">87</span><small>kg</small></div>
@@ -40,101 +41,78 @@
         </div>
       </article>
 
-      <div class="grid-2">
-        <article class="card coach-card">
-          <div class="card-head"><div><div class="eyebrow">Coach-Entscheidung</div><h3 id="coachTitle">Heute prüfen</h3></div><span id="coachMode" class="mode-badge">NORMAL</span></div>
-          <p id="coachText" class="lead muted">Trage Schlaf und Gelenke ein. Die App passt die Empfehlung automatisch an.</p>
-          <div id="coachActions" class="coach-actions"></div>
-          <button id="openTodayWorkout" class="primary full">Heutiges Training öffnen</button>
-        </article>
+      <article id="todayCoach" class="card coach-card prominent">
+        <div class="card-head">
+          <div><div class="eyebrow" id="todayDateLabel">Heute</div><h3 id="coachTitle">Tagesplan wird geladen</h3></div>
+          <span id="coachMode" class="mode-badge">NORMAL</span>
+        </div>
+        <p id="coachText" class="lead">Trage Schlaf und Gelenke ein. Danach sagt dir die App genau, was heute dran ist.</p>
+        <div id="coachBullets" class="coach-bullets"></div>
+        <div class="action-row">
+          <button id="openTodayWorkout" class="primary grow" type="button">Training starten</button>
+          <button id="quickHandstandBtn" class="secondary" type="button">Handstand starten</button>
+        </div>
+      </article>
 
+      <div class="grid-2">
         <article class="card">
-          <div class="card-head"><div><div class="eyebrow">Tagescheck</div><h3>Recovery + Cut</h3></div><span id="dailyScore" class="score-ring">–</span></div>
+          <div class="card-head"><div><div class="eyebrow">30-Sekunden Check</div><h3>Recovery</h3></div><span id="dailyScore" class="score-ring">–</span></div>
           <form id="dailyForm" class="form-grid compact-form">
-            <label>Gewicht kg<input id="dWeight" type="number" step="0.1" placeholder="87.0"></label>
-            <label>Schlaf h<input id="dSleep" type="number" step="0.1" placeholder="5.5"></label>
-            <label>Kalorien<input id="dCalories" type="number" step="1" placeholder="2300"></label>
-            <label>Protein g<input id="dProtein" type="number" step="1" placeholder="170"></label>
-            <label>Wasser L<input id="dWater" type="number" step="0.1" placeholder="2.5"></label>
-            <label>Schritte<input id="dSteps" type="number" step="100" placeholder="8000"></label>
-            <label>Ellenbogen 0–10<input id="dElbow" type="number" min="0" max="10" step="1" value="0"></label>
-            <label>Schulter 0–10<input id="dShoulder" type="number" min="0" max="10" step="1" value="0"></label>
+            <label>Gewicht kg<input id="dWeight" type="number" step="0.1" inputmode="decimal" placeholder="87,0"></label>
+            <label>Schlaf h<input id="dSleep" type="number" step="0.1" inputmode="decimal" placeholder="5,5"></label>
+            <label>Wasser L<input id="dWater" type="number" step="0.1" inputmode="decimal" placeholder="2,5"></label>
+            <label>Schritte<input id="dSteps" type="number" step="100" inputmode="numeric" placeholder="8000"></label>
+            <label>Ellenbogen 0–10<input id="dElbow" type="number" min="0" max="10" step="1" inputmode="numeric" value="0"></label>
+            <label>Schulter 0–10<input id="dShoulder" type="number" min="0" max="10" step="1" inputmode="numeric" value="0"></label>
             <label>Energie 1–5<select id="dEnergy"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select></label>
-            <label class="check"><input id="dCreatine" type="checkbox"> 5 g Creatin</label>
-            <button class="primary span-2" type="submit">Tagescheck speichern</button>
+            <label class="check"><input id="dCreatine" type="checkbox"> 5 g Creatin genommen</label>
+            <button class="primary span-2" type="submit">Check speichern</button>
           </form>
           <div id="dailyMsg" class="status"></div>
+          <p class="muted micro-tip">Gewicht morgens nach Toilette, vor Essen, möglichst unter gleichen Bedingungen. Entscheidend ist der 7-Tage-Schnitt – nicht ein einzelner Wert.</p>
+        </article>
+
+        <article class="card">
+          <div class="card-head"><div><div class="eyebrow">Heute gegessen</div><h3>Automatisch aus Mahlzeiten</h3></div><button class="small-btn" data-nav="food" type="button">Essen öffnen</button></div>
+          <div class="nutrition-big">
+            <div><strong id="todayCalories">0</strong><span>/ 2.300 kcal</span></div>
+            <div><strong id="todayProtein">0</strong><span>/ 170 g Protein</span></div>
+          </div>
+          <div class="progress-line"><span id="calProgress" style="width:0%"></span></div>
+          <p id="nutritionCoach" class="muted">Mahlzeiten eintragen, dann rechnet die App automatisch.</p>
+          <div class="quick-presets" id="todayMealPresets"></div>
         </article>
       </div>
 
-      <div class="grid-4 metric-grid">
-        <article class="card mini"><div class="eyebrow">Kalorienziel</div><strong id="calTarget">2.300</strong><span>kcal</span></article>
-        <article class="card mini"><div class="eyebrow">Proteinziel</div><strong>170+</strong><span>g täglich</span></article>
-        <article class="card mini"><div class="eyebrow">Cut-Tempo</div><strong>0,3–0,6</strong><span>kg/Woche</span></article>
-        <article class="card mini"><div class="eyebrow">Creatin-Streak</div><strong id="creatineStreak">0</strong><span>Tage</span></article>
+      <div id="waistReminder" class="card reminder-card hidden">
+        <div><div class="eyebrow">1× pro Woche</div><h3>Bauchumfang ist fällig</h3><p class="muted">Morgens entspannt auf Bauchnabelhöhe messen.</p></div>
+        <button id="measureWaistNow" class="secondary" type="button">Jetzt eintragen</button>
       </div>
 
       <div class="grid-2">
         <article class="card">
-          <div class="card-head"><div><div class="eyebrow">Heute</div><h3 id="todayWorkoutTitle">Tagesplan</h3></div><span id="todayDuration" class="pill"></span></div>
+          <div class="card-head"><div><div class="eyebrow">Heute im Detail</div><h3 id="todayWorkoutTitle">Tagesplan</h3></div><span id="todayDuration" class="pill"></span></div>
           <div id="todayPreview" class="stack"></div>
         </article>
         <article class="card">
-          <div class="card-head"><div><div class="eyebrow">Wochenstatus</div><h3>Was zählt diese Woche?</h3></div></div>
+          <div class="card-head"><div><div class="eyebrow">Diese Woche</div><h3>Nur das zählt</h3></div><span id="weekScore" class="pill">0/4</span></div>
           <div id="weekChecklist" class="checklist"></div>
         </article>
       </div>
+
+      <article class="card">
+        <div class="card-head"><div><div class="eyebrow">Nächster Schritt</div><h3>Automatische Progression</h3></div></div>
+        <div id="nextProgressions" class="progression-grid"></div>
+      </article>
     </section>
 
     <section id="train" class="view" data-view>
       <div class="section-head">
-        <div><div class="eyebrow">Workout Mode</div><h2>Training</h2></div>
+        <div><div class="eyebrow">Coach-Modus</div><h2>Training</h2></div>
         <div id="workoutTabs" class="segmented"></div>
       </div>
-      <div id="workoutRoot"></div>
-    </section>
-
-    <section id="stats" class="view" data-view>
-      <div class="section-head"><div><div class="eyebrow">Fortschritt</div><h2>Statistik & Wochenreview</h2></div></div>
-      <div class="grid-2">
-        <article class="card">
-          <div class="card-head"><div><div class="eyebrow">Coach Review</div><h3>Letzte 14 Tage</h3></div><span id="trendBadge" class="mode-badge">–</span></div>
-          <div id="weeklyReview" class="review-box"></div>
-        </article>
-        <article class="card">
-          <div class="card-head"><div><div class="eyebrow">Messung</div><h3>Körper & Leistung</h3></div></div>
-          <form id="measureForm" class="form-grid">
-            <label>Datum<input id="mDate" type="date"></label>
-            <label>Gewicht kg<input id="mWeight" type="number" step="0.1"></label>
-            <label>Bauch cm<input id="mWaist" type="number" step="0.1"></label>
-            <label>Pull-up Max<input id="mPullups" type="number" step="1"></label>
-            <label>Dips Max<input id="mDips" type="number" step="1"></label>
-            <label>Freier Handstand s<input id="mHs" type="number" step="1"></label>
-            <label>Dead Hang s<input id="mHang" type="number" step="1"></label>
-            <label>Wall HSPU<input id="mHspu" type="number" step="1"></label>
-            <button class="primary span-2" type="submit">Messung speichern</button>
-          </form>
-        </article>
-      </div>
-
-      <div class="grid-2">
-        <article class="card"><div class="card-head"><div><div class="eyebrow">Körper</div><h3>Gewicht + 7-Tage-Schnitt</h3></div></div><canvas id="weightChart" width="900" height="360"></canvas></article>
-        <article class="card"><div class="card-head"><div><div class="eyebrow">Körper</div><h3>Bauchumfang</h3></div></div><canvas id="waistChart" width="900" height="360"></canvas></article>
-      </div>
-      <div class="grid-2">
-        <article class="card"><div class="card-head"><div><div class="eyebrow">Recovery</div><h3>Schlaf</h3></div></div><canvas id="sleepChart" width="900" height="360"></canvas></article>
-        <article class="card"><div class="card-head"><div><div class="eyebrow">Leistung</div><h3>Pull-ups & Handstand</h3></div></div><canvas id="strengthChart" width="900" height="360"></canvas></article>
-      </div>
-
-      <article class="card">
-        <div class="card-head"><div><div class="eyebrow">Meilensteine</div><h3>Phase-1-Ziele</h3></div></div>
-        <div id="milestones" class="milestone-list"></div>
-      </article>
-
-      <article class="card">
-        <div class="card-head"><div><div class="eyebrow">Historie</div><h3>Letzte Messungen</h3></div><button id="clearMeasurements" class="small-btn danger">Messungen löschen</button></div>
-        <div class="table-wrap"><table><thead><tr><th>Datum</th><th>Gewicht</th><th>Bauch</th><th>Pull-ups</th><th>Dips</th><th>HS</th><th>Hang</th></tr></thead><tbody id="measurementRows"></tbody></table></div>
-      </article>
+      <div id="trainingOverview"></div>
+      <div id="guidedCoach" class="hidden"></div>
     </section>
 
     <section id="food" class="view" data-view>
@@ -151,144 +129,219 @@
           <div class="card-head"><div><div class="eyebrow">Mahlzeit loggen</div><h3>Schnell & simpel</h3></div></div>
           <form id="mealForm" class="form-grid">
             <label class="span-2">Name<input id="mealName" placeholder="z. B. Hähnchen + Reis"></label>
-            <label>Kalorien<input id="mealCalories" type="number" step="1"></label>
-            <label>Protein g<input id="mealProtein" type="number" step="1"></label>
+            <label>Kalorien<input id="mealCalories" type="number" step="1" inputmode="numeric"></label>
+            <label>Protein g<input id="mealProtein" type="number" step="1" inputmode="numeric"></label>
             <button class="primary span-2" type="submit">Mahlzeit hinzufügen</button>
           </form>
-          <div class="preset-wrap">
-            <div class="eyebrow">Deine Presets</div>
-            <div id="mealPresets" class="chip-row"></div>
-          </div>
+          <div class="eyebrow section-label">Deine Schnellwahl</div>
+          <div id="mealPresets" class="chip-row"></div>
         </article>
         <article class="card">
-          <div class="card-head"><div><div class="eyebrow">Heute</div><h3>Mahlzeiten</h3></div><button id="clearMeals" class="small-btn danger">Leeren</button></div>
-          <div id="mealList" class="meal-log"></div>
+          <div class="card-head"><div><div class="eyebrow">Heute</div><h3>Mahlzeiten</h3></div><button id="clearMeals" class="small-btn danger" type="button">Leeren</button></div>
+          <div id="mealList" class="stack"></div>
         </article>
       </div>
 
+      <article class="card">
+        <div class="card-head"><div><div class="eyebrow">Dein einfaches Schema</div><h3>Keine Fitnessküche nötig</h3></div></div>
+        <div class="meal-template-grid">
+          <div><b>12:00</b><span>Körniger Frischkäse/Skyr + Protein-Milchreis + Obst</span><small>≈ 50–60 g Protein</small></div>
+          <div><b>15–16 Uhr</b><span>Whey-Isolat/laktosefrei + Banane/Hafer bei Training</span><small>≈ 25–35 g Protein</small></div>
+          <div><b>18:00</b><span>200–250 g halal Hähnchen/Fisch/Rind + Reis/Kartoffeln + Gemüse</span><small>≈ 50–70 g Protein</small></div>
+          <div><b>Falls nötig</b><span>Laktosefreier Skyr/Quark oder kleiner Shake</span><small>Proteinlücke schließen</small></div>
+        </div>
+        <p class="coach-tip">Wochenende: Döner & Restaurant sind okay – aber ins Wochenbudget einrechnen. Zero-Getränke sind okay. Süßigkeiten sind nicht nötig.</p>
+      </article>
+
       <div class="grid-2">
         <article class="card">
-          <div class="eyebrow">Dein Tagesbaukasten</div>
-          <h3>Kein Frühstück nötig</h3>
-          <div class="meal-list">
-            <div><b>12:00</b><span>Laktosefreier körniger Frischkäse/Skyr + Protein-Milchreis oder Porridge + Obst. Ziel 50–60 g Protein.</span></div>
-            <div><b>15–16</b><span>Whey-Isolat/laktosefreies Whey 25–35 g Protein. Trainingstag: Banane/Hafer dazu.</span></div>
-            <div><b>17–19</b><span>200–250 g halal Hähnchen/Fisch/mageres Rind + Reis/Kartoffeln + Gemüse. Ziel 50–70 g Protein.</span></div>
-            <div><b>Optional</b><span>Fehlt Protein: laktosefreier Skyr/Quark oder kleiner Shake.</span></div>
+          <div class="card-head"><div><div class="eyebrow">Makro-Rahmen</div><h3>Was wirklich zählt</h3></div></div>
+          <div class="settings-grid">
+            <div><span>Kalorien</span><b>≈ 2.300 kcal</b></div>
+            <div><span>Protein</span><b>170+ g</b></div>
+            <div><span>Fett</span><b>≈ 70 g</b></div>
+            <div><span>Kohlenhydrate</span><b>≈ 240–250 g</b></div>
           </div>
+          <p class="muted micro-tip">Kalorien und Protein sind deine zwei wichtigsten täglichen Zahlen. Kohlenhydrate sind Trainingsenergie – kein Keto und kein unnötiges Carb-Verbot.</p>
         </article>
         <article class="card">
-          <div class="eyebrow">Kalorien-Steuerung</div>
-          <h3>Nicht nach Gefühl ändern</h3>
-          <ul class="rules">
-            <li>14 Tage sauber tracken, dann Wochenschnitt beurteilen.</li>
-            <li>0,3–0,6 kg/Woche Verlust = Zielbereich.</li>
-            <li>2–3 Wochen Stillstand trotz sauberem Tracking → 2.150–2.200 kcal.</li>
-            <li>&gt;0,8 kg/Woche + Leistung sinkt → ca. 100–150 kcal hoch.</li>
-            <li>Wochenende vollständig mittracken. Döner ist okay, aber nicht „unsichtbar“.</li>
-          </ul>
+          <div class="card-head"><div><div class="eyebrow">Supplements</div><h3>Einfach halten</h3></div></div>
+          <div class="phase-criteria">
+            <div><span class="yes">✓</span><span><b>Creatin-Monohydrat: 5 g täglich</b>, auch trainingsfrei.</span></div>
+            <div><span>•</span><span>Whey nur, wenn du dein Protein über Essen nicht schaffst.</span></div>
+            <div><span>•</span><span>Halal-zertifiziert wählen, wenn dir die Zertifizierung wichtig ist.</span></div>
+            <div><span>•</span><span>Nach Creatin kann die Waage durch Muskelwasser etwa 0,5–1,5 kg höher stehen – das ist kein Fett.</span></div>
+            <div><span>•</span><span>Fat Burner, BCAA und „Testobooster“ brauchst du für diesen Plan nicht.</span></div>
+          </div>
         </article>
       </div>
 
       <article id="vacationCard" class="card vacation-card">
-        <div class="card-head"><div><div class="eyebrow">All-inclusive</div><h3>Urlaubsmodus</h3></div><button id="toggleVacation" class="secondary">Aktivieren</button></div>
-        <p>Im Urlaub ist das Ziel Gewicht halten: Protein zu jeder Mahlzeit, Gemüse/Salat, Wasser/Zero, nicht jedes Buffet als Cheat Day behandeln. 2–3 kurze Körpergewichts-Sessions reichen. Nach Rückkehr 4–7 normale Tage warten, bevor du die Waage bewertest.</p>
+        <div><div class="eyebrow">All-inclusive Woche</div><h3>Urlaubsmodus</h3><p>Kein aggressiver Cut: Protein zu jeder Mahlzeit, Gemüse/Salat dazu, Wasser/Zero, nicht jedes Essen zum Wettessen machen, 2–3 kurze Bodyweight-Einheiten. Ein kurzfristiger Gewichtssprung danach ist oft Wasser/Glykogen/Salz – erst nach 4–7 normalen Tagen neu beurteilen.</p></div>
+        <button id="toggleVacation" class="secondary" type="button">Aktivieren</button>
+      </article>
+    </section>
+
+    <section id="stats" class="view" data-view>
+      <div class="section-head"><div><div class="eyebrow">Fortschritt</div><h2>Statistik</h2></div></div>
+
+      <div class="grid-4 metric-grid">
+        <article class="card mini"><div class="eyebrow">7-Tage Gewicht</div><strong id="statWeightAvg">–</strong><span>kg</span></article>
+        <article class="card mini"><div class="eyebrow">Taille zuletzt</div><strong id="statWaist">–</strong><span>cm</span></article>
+        <article class="card mini"><div class="eyebrow">Pull-up PR</div><strong id="statPullPR">2</strong><span>sauber</span></article>
+        <article class="card mini"><div class="eyebrow">Handstand PR</div><strong id="statHsPR">5</strong><span>Sekunden</span></article>
+      </div>
+
+      <div class="grid-2">
+        <article class="card">
+          <div class="card-head"><div><div class="eyebrow">Wöchentliche Messung</div><h3>Bauchumfang</h3></div></div>
+          <form id="waistForm" class="form-grid">
+            <label>Datum<input id="wDate" type="date"></label>
+            <label>Bauch cm<input id="wWaist" type="number" step="0.1" inputmode="decimal" placeholder="z. B. 96,5"></label>
+            <button class="primary span-2" type="submit">Bauchumfang speichern</button>
+          </form>
+          <p class="muted">Morgens, entspannt, Maßband auf Bauchnabelhöhe. Immer gleich messen.</p>
+        </article>
+
+        <article class="card">
+          <div class="card-head"><div><div class="eyebrow">Leistungstest</div><h3>Alle 2–4 Wochen</h3></div></div>
+          <form id="strengthForm" class="form-grid">
+            <label>Datum<input id="sDate" type="date"></label>
+            <label>Pull-ups Max<input id="sPullups" type="number" step="1" inputmode="numeric"></label>
+            <label>Dips Max<input id="sDips" type="number" step="1" inputmode="numeric"></label>
+            <label>Freier Handstand s<input id="sHs" type="number" step="1" inputmode="numeric"></label>
+            <label>Dead Hang s<input id="sHang" type="number" step="1" inputmode="numeric"></label>
+            <label>Wall HSPU<input id="sHspu" type="number" step="1" inputmode="numeric"></label>
+            <button class="primary span-2" type="submit">Leistung speichern</button>
+          </form>
+        </article>
+      </div>
+
+      <div class="grid-2">
+        <article class="card"><div class="card-head"><div><div class="eyebrow">Körper</div><h3>Gewicht + 7-Tage-Schnitt</h3></div></div><canvas id="weightChart" width="900" height="360"></canvas></article>
+        <article class="card"><div class="card-head"><div><div class="eyebrow">Körper</div><h3>Bauchumfang</h3></div></div><canvas id="waistChart" width="900" height="360"></canvas></article>
+      </div>
+      <div class="grid-2">
+        <article class="card"><div class="card-head"><div><div class="eyebrow">Recovery</div><h3>Schlaf</h3></div></div><canvas id="sleepChart" width="900" height="360"></canvas></article>
+        <article class="card"><div class="card-head"><div><div class="eyebrow">Leistung</div><h3>Pull-ups & Handstand</h3></div></div><canvas id="strengthChart" width="900" height="360"></canvas></article>
+      </div>
+
+      <article class="card">
+        <div class="card-head"><div><div class="eyebrow">Coach Review</div><h3>Was sagen die letzten 14 Tage?</h3></div><span id="trendBadge" class="mode-badge">–</span></div>
+        <div id="weeklyReview" class="review-box"></div>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><div><div class="eyebrow">Foto-Timeline</div><h3>Alle 4 Wochen</h3></div></div>
+        <div class="photo-upload-grid">
+          <label class="photo-slot"><span>Vorne</span><img alt="Vorne Vorschau"><input id="photoFront" type="file" accept="image/*" capture="environment"></label>
+          <label class="photo-slot"><span>Seite</span><img alt="Seite Vorschau"><input id="photoSide" type="file" accept="image/*" capture="environment"></label>
+          <label class="photo-slot"><span>Rücken</span><img alt="Rücken Vorschau"><input id="photoBack" type="file" accept="image/*" capture="environment"></label>
+        </div>
+        <button id="savePhotoSet" class="primary full" type="button">Fotosatz mit heutigem Datum speichern</button>
+        <div id="photoTimeline" class="photo-timeline"></div>
       </article>
     </section>
 
     <section id="skills" class="view" data-view>
-      <div class="section-head"><div><div class="eyebrow">Skill Tree</div><h2>Handstand → HSPU → Flag</h2></div></div>
+      <div class="section-head"><div><div class="eyebrow">Skills</div><h2>Handstand → HSPU → später Flag</h2></div></div>
+      <article class="card">
+        <div class="card-head"><div><div class="eyebrow">Diese Woche</div><h3>Handstand-Frequenz</h3></div><span class="pill">4× kurz</span></div>
+        <p class="muted">Montag 8 Min · Mittwoch 5–10 Min · Donnerstag 8 Min · Samstag 5–15 Min. Frisch bleiben, keine Ermüdungsschlacht.</p>
+        <div id="handstandDays" class="hs-days"></div>
+        <button id="startSkillTimer" class="primary full" type="button">Geführte Handstand-Session starten</button>
+      </article>
       <div id="skillTree" class="skill-tree"></div>
       <article class="card">
-        <div class="eyebrow">Handstand-Frequenz</div>
-        <h3>4× pro Woche 5–10 Minuten</h3>
-        <p class="muted">Montag, Mittwoch, Donnerstag, Samstag. Technik frisch halten; keine 30-Minuten-Schlachten. Ziel Phase 1: 10+ Sekunden reproduzierbar frei.</p>
-        <div class="handstand-days" id="handstandDays"></div>
+        <div class="card-head"><div><div class="eyebrow">Human Flag</div><h3>Wann wir sie ernsthaft starten</h3></div><span id="flagLock" class="mode-badge">LOCKED</span></div>
+        <p id="flagText">Erst 8–10 strikte Pull-ups, stabile Schulter, Core und Straight-arm-Kraft. Bis dahin baut dein Plan genau die Basis dafür.</p>
       </article>
     </section>
 
-    <section id="library" class="view" data-view>
-      <div class="section-head"><div><div class="eyebrow">Übungsbibliothek</div><h2>Bild + Technik + Progression</h2></div><input id="exerciseSearch" class="search" type="search" placeholder="Übung suchen…"></div>
-      <div id="exerciseGrid" class="exercise-grid"></div>
+    <section id="roadmap" class="view" data-view>
+      <div class="section-head"><div><div class="eyebrow">Langfristig</div><h2>Dein 12+ Monats-Weg</h2></div><span id="currentPhaseBadge" class="mode-badge">PHASE 1</span></div>
+      <div id="roadmapCards" class="roadmap-grid"></div>
+      <div class="grid-2">
+        <article class="card">
+          <div class="card-head"><div><div class="eyebrow">Körperfokus</div><h3>So entsteht der Look</h3></div></div>
+          <div class="phase-criteria">
+            <div><span>1</span><span>Latissimus breiter → stärkerer V-Taper.</span></div>
+            <div><span>2</span><span>Seitliche/hintere Schulter → breitere Optik.</span></div>
+            <div><span>3</span><span>Obere Brust + Trizeps → kräftiger statt nur dünn.</span></div>
+            <div><span>4</span><span>Taille langsam reduzieren → Definition sichtbar machen.</span></div>
+          </div>
+          <p class="coach-tip">Jetzt kein Bulk. Ziel ist Recomp/Cut: Fett langsam runter, Kraft und Muskulatur hoch.</p>
+        </article>
+        <article class="card">
+          <div class="card-head"><div><div class="eyebrow">Regeneration</div><h3>Dein aktueller Engpass</h3></div></div>
+          <div class="phase-criteria">
+            <div><span>•</span><span>Aktuell etwa 5–6 h Schlaf: Montag + Donnerstag priorisieren, Home C darf ausfallen.</span></div>
+            <div><span>•</span><span>Langfristiges Ziel: ungefähr 7–9 h, soweit der Familienalltag es zulässt.</span></div>
+            <div><span>•</span><span>Keine dauernden Maximalversuche; Sehnen/Gelenke brauchen länger als Muskeln.</span></div>
+            <div><span>•</span><span>Bleibt starke morgendliche Erschöpfung trotz wieder normalem Schlaf bestehen, medizinisch abklären lassen.</span></div>
+          </div>
+        </article>
+      </div>
+
+      <article class="card">
+        <div class="card-head"><div><div class="eyebrow">Kraft-Meilensteine</div><h3>Wohin wir wollen</h3></div></div>
+        <div id="milestones" class="milestone-list"></div>
+        <p class="muted micro-tip">Nach 8–10 strikten Pull-ups: Weighted Pull-ups. Langfristig Richtung +20 kg, +30 kg und weiter. Dips ebenso nach stabilen 3×10/12–15.</p>
+      </article>
+      <article class="card">
+        <div class="card-head"><div><div class="eyebrow">Cardio</div><h3>Joggen ohne Kraft zu sabotieren</h3></div><span id="runWeek" class="pill">0/1</span></div>
+        <p id="runAdvice">Start: 1× pro Woche 20–30 Minuten sehr locker, Gespräch möglich. Bei besserem Schlaf später 2×.</p>
+        <button id="logRunBtn" class="secondary" type="button">25 Min lockeren Lauf loggen</button>
+        <span id="runStatus" class="status"></span>
+      </article>
     </section>
 
-    <section id="more" class="view" data-view>
-      <div class="section-head"><div><div class="eyebrow">Mehr</div><h2>Profil, Fotos & Backup</h2></div></div>
-      <div class="grid-2">
-        <article class="card">
-          <h3>Deine Ausgangsdaten</h3>
-          <div class="form-grid static-form">
-            <label>Alter<input value="34" disabled></label><label>Größe<input value="180 cm" disabled></label>
-            <label>Startgewicht<input value="87 kg" disabled></label><label>Schlaf aktuell<input value="5–6 h" disabled></label>
-            <label>Bänder<input value="10 / 20 / 30 kg" disabled></label><label>Trainingszeit<input value="35–60 Min." disabled></label>
-            <label class="span-2">Training<input value="Montag Park A · Donnerstag Park B · Samstag/Sonntag Home C" disabled></label>
-          </div>
-        </article>
-        <article class="card">
-          <div class="card-head"><div><div class="eyebrow">Progress Fotos</div><h3>Alle 4 Wochen</h3></div></div>
-          <div class="photo-grid">
-            <label class="photo-slot">Front<input type="file" accept="image/*" data-photo="front"><img alt="Front"></label>
-            <label class="photo-slot">Seite<input type="file" accept="image/*" data-photo="side"><img alt="Seite"></label>
-            <label class="photo-slot">Rücken<input type="file" accept="image/*" data-photo="back"><img alt="Rücken"></label>
-          </div>
-          <p class="muted">Gleiche Beleuchtung, Abstand, Haltung und möglichst gleiche Tageszeit. Fotos bleiben lokal auf dem Gerät.</p>
-        </article>
-      </div>
-      <div class="grid-2">
-        <article class="card">
-          <h3>Backup</h3>
-          <p class="muted">Deine Daten werden lokal gespeichert. Exportiere regelmäßig ein JSON-Backup.</p>
-          <div class="button-stack">
-            <button id="exportBtn" class="primary">Daten exportieren</button>
-            <label class="secondary file-btn">Daten importieren<input id="importFile" type="file" accept="application/json"></label>
-            <button id="resetBtn" class="danger-btn">Alle App-Daten zurücksetzen</button>
-          </div>
-        </article>
-        <article class="card">
-          <h3>Homescreen</h3>
-          <p><b>iPhone:</b> HTTPS-Seite in Safari öffnen → Teilen → „Zum Home-Bildschirm“.</p>
-          <p><b>Android:</b> Browser-Menü → „App installieren“; bei Unterstützung erscheint oben zusätzlich „Installieren“.</p>
-          <p class="muted">Die App ist offline-fähig. Gesundheits- und Trainingsdaten werden nicht an GitHub übertragen.</p>
-        </article>
-      </div>
+    <section id="settings" class="view" data-view>
+      <div class="section-head"><div><div class="eyebrow">App</div><h2>Einstellungen & Backup</h2></div><span class="pill">V2.1.0</span></div>
       <article class="card">
-        <div class="eyebrow">Joggen</div>
-        <h3>1× pro Woche locker starten</h3>
-        <p>20–30 Minuten in einem Tempo, bei dem du noch sprechen kannst. Wenn Schlaf und Regeneration wieder gut sind, auf 2× pro Woche steigern.</p>
-        <button id="logRunBtn" class="secondary">Heutigen lockeren Lauf loggen</button>
-        <span id="runStatus" class="status"></span>
+        <div class="card-head"><div><div class="eyebrow">Deine Basis</div><h3>Planwerte</h3></div></div>
+        <div class="settings-grid">
+          <div><span>Kalorien</span><b>2.300 kcal</b></div>
+          <div><span>Protein</span><b>170+ g</b></div>
+          <div><span>Creatin</span><b>5 g täglich</b></div>
+          <div><span>Bänder</span><b>10 · 20 · 30 kg</b></div>
+          <div><span>Training</span><b>Mo · Do · Wochenende</b></div>
+          <div><span>Schlaf aktuell</span><b>5–6 h</b></div>
+        </div>
+      </article>
+      <article class="card">
+        <div class="card-head"><div><div class="eyebrow">Daten</div><h3>Bleiben auf diesem Gerät</h3></div></div>
+        <p class="muted">Gewicht, Essen, Training und Fotos werden lokal im Browser gespeichert. Exportiere regelmäßig ein Backup.</p>
+        <div class="action-row">
+          <button id="exportBtn" class="secondary" type="button">Backup exportieren</button>
+          <label class="file-btn">Backup importieren<input id="importFile" type="file" accept="application/json"></label>
+          <button id="resetBtn" class="danger-btn" type="button">Alle Daten löschen</button>
+        </div>
       </article>
     </section>
   </main>
 
-  <nav class="bottom-nav" aria-label="Navigation">
-    <button class="nav-btn active" data-target="today"><span>⌂</span><small>Heute</small></button>
-    <button class="nav-btn" data-target="train"><span>▣</span><small>Training</small></button>
-    <button class="nav-btn" data-target="stats"><span>↗</span><small>Stats</small></button>
-    <button class="nav-btn" data-target="food"><span>◎</span><small>Essen</small></button>
-    <button class="nav-btn" data-target="skills"><span>◆</span><small>Skills</small></button>
-    <button class="nav-btn" data-target="library"><span>◇</span><small>Übungen</small></button>
-    <button class="nav-btn" data-target="more"><span>⚙</span><small>Mehr</small></button>
+  <nav class="bottom-nav" aria-label="Hauptnavigation">
+    <button class="nav-btn active" data-target="today"><span>⌂</span>Heute</button>
+    <button class="nav-btn" data-target="train"><span>◉</span>Training</button>
+    <button class="nav-btn" data-target="food"><span>◫</span>Essen</button>
+    <button class="nav-btn" data-target="stats"><span>↗</span>Stats</button>
+    <button class="nav-btn" data-target="skills"><span>◆</span>Skills</button>
+    <button class="nav-btn" data-target="roadmap"><span>◎</span>Plan</button>
+    <button class="nav-btn" data-target="settings"><span>⚙</span>Mehr</button>
   </nav>
 
-  <dialog id="exerciseDialog">
-    <button class="dialog-close" aria-label="Schließen">×</button>
-    <div id="exerciseDialogBody"></div>
-  </dialog>
-
-  <dialog id="timerDialog">
-    <button class="dialog-close timer-close" aria-label="Schließen">×</button>
-    <div class="timer-body">
-      <div class="eyebrow">Pausentimer</div>
-      <div id="timerDisplay" class="timer-display">02:00</div>
-      <div class="chip-row">
-        <button data-seconds="90" class="secondary timer-preset">1:30</button>
-        <button data-seconds="120" class="secondary timer-preset">2:00</button>
-        <button data-seconds="180" class="secondary timer-preset">3:00</button>
+  <div id="timerOverlay" class="timer-overlay hidden" role="dialog" aria-modal="true">
+    <div class="timer-card">
+      <div class="eyebrow" id="timerLabel">Pause</div>
+      <div id="timerValue" class="timer-value">02:00</div>
+      <div class="timer-actions">
+        <button id="timerMinus" class="small-btn" type="button">−15 s</button>
+        <button id="timerSkip" class="secondary" type="button">Überspringen</button>
+        <button id="timerPlus" class="small-btn" type="button">+15 s</button>
       </div>
-      <button id="timerToggle" class="primary full">Start</button>
     </div>
-  </dialog>
+  </div>
 
   <script src="app.js"></script>
 </body>
