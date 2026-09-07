@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Cal Coach" />
   <meta name="description" content="Persönlicher Calisthenics Coach: Training, Ernährung, Progression und Statistik." />
-  <title>Calisthenics Coach V2.4</title>
+  <title>Calisthenics Coach V2.5</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <link rel="stylesheet" href="styles.css" />
@@ -16,7 +16,7 @@
 <body>
   <header class="topbar">
     <div>
-      <div class="eyebrow">Personal Coach · V2.4</div>
+      <div class="eyebrow">Personal Coach · V2.5</div>
       <h1>Calisthenics Coach</h1>
     </div>
     <div class="top-actions">
@@ -151,60 +151,75 @@
     </section>
 
     <section id="food" class="view" data-view>
-      <div class="section-head"><div><div class="eyebrow">Ernährung</div><h2>2.300 kcal · 170+ g Protein</h2></div><span id="foodModeBadge" class="mode-badge">CUT</span></div>
-      <div class="grid-4 metric-grid">
-        <article class="card mini"><div class="eyebrow">Heute kcal</div><strong id="foodCalories">0</strong><span id="foodCaloriesLeft">2.300 übrig</span></article>
-        <article class="card mini"><div class="eyebrow">Protein</div><strong id="foodProtein">0 g</strong><span id="foodProteinLeft">170 g übrig</span></article>
-        <article class="card mini"><div class="eyebrow">Wasser</div><strong id="foodWater">0 L</strong><span>Ziel 2–3 L</span></article>
-        <article class="card mini"><div class="eyebrow">Creatin</div><strong id="foodCreatine">Nein</strong><span>5 g täglich</span></article>
+      <div class="section-head"><div><div class="eyebrow">Ernährung</div><h2>Food Tracker</h2><p class="muted">Lebensmittel suchen → Menge eingeben → fertig.</p></div><span id="foodModeBadge" class="mode-badge">CUT</span></div>
+
+      <article class="card food-coach-card prominent">
+        <div class="card-head"><div><div class="eyebrow">Coach heute</div><h3 id="foodCoachTitle">Tagesziel im Blick</h3></div><span id="foodCoachBadge" class="mode-badge">START</span></div>
+        <p id="foodCoachAdvice" class="lead">Trage dein Essen ein. Die App sagt dir danach automatisch, was noch fehlt.</p>
+      </article>
+
+      <div class="food-macro-grid">
+        <article class="card mini macro-card"><div class="eyebrow">Kalorien</div><strong id="foodCalories">0</strong><span id="foodCaloriesLeft">2.300 übrig</span><div class="macro-progress"><i id="foodCaloriesBar"></i></div></article>
+        <article class="card mini macro-card"><div class="eyebrow">Protein</div><strong id="foodProtein">0 g</strong><span id="foodProteinLeft">170 g übrig</span><div class="macro-progress"><i id="foodProteinBar"></i></div></article>
+        <article class="card mini macro-card"><div class="eyebrow">Kohlenhydrate</div><strong id="foodCarbs">0 g</strong><span id="foodCarbsLeft">245 g übrig</span><div class="macro-progress"><i id="foodCarbsBar"></i></div></article>
+        <article class="card mini macro-card"><div class="eyebrow">Fett</div><strong id="foodFat">0 g</strong><span id="foodFatLeft">70 g übrig</span><div class="macro-progress"><i id="foodFatBar"></i></div></article>
       </div>
 
-      <div class="grid-2">
-        <article class="card">
-          <div class="card-head"><div><div class="eyebrow">Mahlzeit loggen</div><h3>Schnell</h3></div></div>
-          <form id="mealForm" class="form-grid">
-            <label class="span-2">Name<input id="mealName" placeholder="z. B. Hähnchen + Reis"></label>
-            <label>Kalorien<input id="mealCalories" type="number" step="1" inputmode="numeric"></label>
-            <label>Protein g<input id="mealProtein" type="number" step="1" inputmode="numeric"></label>
-            <button class="primary span-2" type="submit">Mahlzeit hinzufügen</button>
-          </form>
-          <div class="eyebrow section-label">Schnellwahl</div>
-          <div id="mealPresets" class="chip-row"></div>
-        </article>
-        <article class="card">
-          <div class="card-head"><div><div class="eyebrow">Heute</div><h3>Mahlzeiten</h3></div><button id="clearMeals" class="small-btn danger" type="button">Leeren</button></div>
-          <div id="mealList" class="stack"></div>
-        </article>
+      <div class="food-secondary-row">
+        <span><b id="foodFiber">0 g</b> Ballaststoffe <small id="foodFiberLeft">30 g Ziel</small></span>
+        <span><b id="foodWater">0 L</b> Wasser</span>
+        <span><b id="foodCreatine">Nein</b> Creatin</span>
       </div>
+
+      <article class="card food-search-card">
+        <div class="card-head"><div><div class="eyebrow">Lebensmittel hinzufügen</div><h3>Suchen statt rechnen</h3></div><span class="pill">pro 100 g</span></div>
+        <label class="food-search-label">Lebensmittel suchen
+          <input id="foodSearch" class="food-search-input" type="search" autocomplete="off" placeholder="z. B. Hähnchen, Reis, Skyr, Banane…">
+        </label>
+        <div id="foodSearchResults" class="food-search-results"></div>
+
+        <div id="selectedFoodCard" class="selected-food hidden">
+          <div class="selected-food-head"><div><div class="eyebrow">Ausgewählt</div><h3 id="selectedFoodName">–</h3><small id="selectedFoodPer100" class="muted"></small></div><button id="clearSelectedFood" class="small-btn" type="button">×</button></div>
+          <div class="food-add-grid">
+            <label>Menge <div class="amount-input"><input id="foodAmount" type="number" step="1" min="1" inputmode="numeric" value="100"><span id="foodAmountUnit">g</span></div></label>
+            <div class="food-live-calc"><b id="selectedFoodCalories">0 kcal</b><span id="selectedFoodMacros">0 P · 0 KH · 0 F</span></div>
+          </div>
+          <div id="foodQuickPortions" class="chip-row"></div>
+          <button id="addSelectedFood" class="primary full" type="button">Zum heutigen Essen hinzufügen</button>
+        </div>
+
+        <div class="eyebrow section-label">Häufig / zuletzt</div>
+        <div id="recentFoods" class="food-quick-grid"></div>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><div><div class="eyebrow">Heute</div><h3>Was du gegessen hast</h3></div><button id="clearMeals" class="small-btn danger" type="button">Tag leeren</button></div>
+        <div id="mealList" class="stack"></div>
+      </article>
 
       <details class="card collapsible-card">
-        <summary>Essensschema & Supplements</summary>
+        <summary>Eigene / verpackte Lebensmittel</summary>
+        <p class="muted">Für Produkte, die nicht in der Datenbank sind. Werte vom Etikett pro Portion eintragen.</p>
+        <form id="mealForm" class="form-grid">
+          <label class="span-2">Name<input id="mealName" placeholder="z. B. Protein-Milchreis Marke X"></label>
+          <label>Kalorien<input id="mealCalories" type="number" step="1" inputmode="numeric"></label>
+          <label>Protein g<input id="mealProtein" type="number" step="0.1" inputmode="decimal"></label>
+          <label>Kohlenhydrate g<input id="mealCarbs" type="number" step="0.1" inputmode="decimal"></label>
+          <label>Fett g<input id="mealFat" type="number" step="0.1" inputmode="decimal"></label>
+          <label>Ballaststoffe g<input id="mealFiber" type="number" step="0.1" inputmode="decimal"></label>
+          <button class="primary span-2" type="submit">Eigene Portion hinzufügen</button>
+        </form>
+      </details>
+
+      <details class="card collapsible-card">
+        <summary>Ernährungsregeln & Supplements</summary>
         <div class="meal-template-grid">
           <div><b>12:00</b><span>Körniger Frischkäse/Skyr + Protein-Milchreis + Obst</span><small>≈ 50–60 g Protein</small></div>
           <div><b>15–16 Uhr</b><span>Whey-Isolat/laktosefrei + Banane/Hafer bei Training</span><small>≈ 25–35 g Protein</small></div>
           <div><b>18:00</b><span>200–250 g halal Hähnchen/Fisch/Rind + Reis/Kartoffeln + Gemüse</span><small>≈ 50–70 g Protein</small></div>
           <div><b>Falls nötig</b><span>Laktosefreier Skyr/Quark oder kleiner Shake</span><small>Proteinlücke schließen</small></div>
         </div>
-        <div class="grid-2 nested-grid">
-          <article class="subcard">
-            <div class="card-head"><div><div class="eyebrow">Makro-Rahmen</div><h3>Was zählt</h3></div></div>
-            <div class="settings-grid">
-              <div><span>Kalorien</span><b>≈ 2.300 kcal</b></div>
-              <div><span>Protein</span><b>170+ g</b></div>
-              <div><span>Fett</span><b>≈ 70 g</b></div>
-              <div><span>Kohlenhydrate</span><b>≈ 240–250 g</b></div>
-            </div>
-          </article>
-          <article class="subcard">
-            <div class="card-head"><div><div class="eyebrow">Supplements</div><h3>Einfach halten</h3></div></div>
-            <div class="phase-criteria">
-              <div><span class="yes">✓</span><span><b>Creatin-Monohydrat: 5 g täglich</b>, auch trainingsfrei.</span></div>
-              <div><span>•</span><span>Whey nur, wenn du dein Protein über Essen nicht schaffst.</span></div>
-              <div><span>•</span><span>Fat Burner, BCAA und Testobooster brauchst du nicht.</span></div>
-            </div>
-          </article>
-        </div>
-        <div class="coach-tip" style="margin-top:12px"><b>Deine Regeln:</b> Frühstück ist nicht nötig, wenn dir zwei Hauptmahlzeiten liegen. Halal einkaufen und wegen Laktoseintoleranz laktosefreie Produkte/Whey-Isolat wählen. Wochenende, Döner und Restaurant zählen ganz normal ins Wochenbudget – genau dort darf das Defizit nicht unbemerkt verschwinden. Wasser/Zero sind okay; Süßigkeiten sind nicht nötig.</div>
+        <div class="coach-tip" style="margin-top:12px"><b>Werte in der Lebensmitteldatenbank sind Richtwerte.</b> Bei verpackten Lebensmitteln gilt das Etikett. Halal einkaufen; wegen Laktoseintoleranz laktosefreie Produkte/Whey-Isolat wählen. Wochenende, Döner und Restaurant zählen normal ins Wochenbudget.</div>
       </details>
 
       <article id="vacationCard" class="card vacation-card">
@@ -324,7 +339,7 @@
     </section>
 
     <section id="settings" class="view" data-view>
-      <div class="section-head"><div><div class="eyebrow">App</div><h2>Mehr & Einstellungen</h2></div><span class="pill">V2.4.0</span></div>
+      <div class="section-head"><div><div class="eyebrow">App</div><h2>Mehr & Einstellungen</h2></div><span class="pill">V2.5.0</span></div>
       <article class="card">
         <div class="card-head"><div><div class="eyebrow">Planwerte</div><h3>Deine Basis</h3></div></div>
         <div class="settings-grid">

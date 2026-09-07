@@ -1,7 +1,7 @@
 'use strict';
 
 const STORE_KEY = 'calisthenicsCoach_v2'; // bewusst gleich: V2-Daten bleiben erhalten
-const VERSION = '2.4.0';
+const VERSION = '2.5.0';
 
 const pad = n => String(n).padStart(2, '0');
 const localDateKey = (date = new Date()) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
@@ -29,7 +29,7 @@ const defaultState = {
     age: 34, sex: 'm', height: 180, startWeight: 87, bands: [10, 20, 30], sleepBaseline: '5–6',
     goal: 'Maximale Kraft → Muskeln → shredded → Handstand-Skills'
   },
-  settings: { calories: 2300, protein: 170, creatine: 5, vacation: false },
+  settings: { calories: 2300, protein: 170, carbs: 245, fat: 70, fiber: 30, creatine: 5, vacation: false },
   daily: {}, meals: {}, workouts: {}, handstandPractice: {}, runs: {},
   measurements: [],
   strengthTests: [{ date: '2026-09-07', pullups: 2, dips: 10, handstand: 5, hang: 45, hspu: 0 }],
@@ -336,19 +336,181 @@ function recoveryDecision(key = localDateKey()) {
 
 function mealTotals(key = localDateKey()) {
   const list = state.meals[key] || [];
+  const sum = field => list.reduce((s, m) => s + (+m[field] || 0), 0);
   return {
-    calories: list.reduce((s, m) => s + (+m.cal || 0), 0),
-    protein: list.reduce((s, m) => s + (+m.protein || 0), 0)
+    calories: Math.round(sum('cal')),
+    protein: +sum('protein').toFixed(1),
+    carbs: +sum('carbs').toFixed(1),
+    fat: +sum('fat').toFixed(1),
+    fiber: +sum('fiber').toFixed(1)
   };
 }
 
-const MEAL_PRESETS = [
-  { name: 'Körniger Frischkäse + Protein-Milchreis', cal: 520, protein: 55 },
-  { name: 'Porridge + Whey', cal: 500, protein: 40 },
-  { name: 'Whey + Banane', cal: 230, protein: 28 },
-  { name: 'Hähnchen + Reis + Gemüse', cal: 720, protein: 65 },
-  { name: 'Döner grob', cal: 750, protein: 40 }
+// Richtwerte pro 100 g / 100 ml. Bei verpackten Produkten gilt das Etikett.
+const FOOD_DB = [
+  {id:'chicken',name:'Hähnchenbrust, gegart',aliases:'huhn chicken brust halal',cat:'Protein',kcal:165,p:31,c:0,f:3.6,fi:0,portion:200},
+  {id:'turkey',name:'Putenbrust, gegart',aliases:'pute turkey halal',cat:'Protein',kcal:135,p:29,c:0,f:1.5,fi:0,portion:200},
+  {id:'beeflean',name:'Rindfleisch, mager',aliases:'rind beef halal steak',cat:'Protein',kcal:200,p:26,c:0,f:10,fi:0,portion:200},
+  {id:'mincelean',name:'Rinderhack, mager',aliases:'hackfleisch rind halal',cat:'Protein',kcal:180,p:25,c:0,f:8,fi:0,portion:200},
+  {id:'salmon',name:'Lachs',aliases:'salmon fisch',cat:'Protein',kcal:208,p:20,c:0,f:13,fi:0,portion:180},
+  {id:'tuna',name:'Thunfisch in Wasser, abgetropft',aliases:'thunfisch tuna dose',cat:'Protein',kcal:116,p:26,c:0,f:1,fi:0,portion:150},
+  {id:'egg',name:'Ei',aliases:'eier eggs',cat:'Protein',kcal:143,p:12.6,c:0.7,f:9.5,fi:0,portion:60,portionLabel:'1 Ei ≈ 60 g'},
+  {id:'eggwhite',name:'Eiklar',aliases:'eiweiss egg white',cat:'Protein',kcal:52,p:11,c:0.7,f:0.2,fi:0,portion:150},
+  {id:'cottage',name:'Körniger Frischkäse light / laktosefrei',aliases:'hüttenkäse cottage frischkäse',cat:'Milchprotein',kcal:82,p:13,c:3,f:2,fi:0,portion:250},
+  {id:'skyr',name:'Skyr natur, laktosefrei',aliases:'skyr joghurt yogurt',cat:'Milchprotein',kcal:63,p:11,c:4,f:0.2,fi:0,portion:250},
+  {id:'quark',name:'Magerquark, laktosefrei',aliases:'quark mager',cat:'Milchprotein',kcal:67,p:12,c:4,f:0.2,fi:0,portion:250},
+  {id:'greekyogurt',name:'Griechischer Joghurt 2 %',aliases:'joghurt yogurt griechisch',cat:'Milchprotein',kcal:73,p:9,c:4,f:2,fi:0,portion:250},
+  {id:'whey',name:'Whey Protein',aliases:'proteinpulver protein shake isolat isolate',cat:'Supplement',kcal:390,p:78,c:8,f:6,fi:1,portion:30,portionLabel:'1 Scoop ≈ 30 g'},
+  {id:'proteinpudding',name:'Protein-Pudding',aliases:'high protein pudding',cat:'Milchprotein',kcal:75,p:10,c:6,f:1.5,fi:0,portion:200},
+  {id:'proteinrice',name:'Protein-Milchreis',aliases:'protein reis pudding milchreis',cat:'Milchprotein',kcal:80,p:10,c:7,f:1.5,fi:0,portion:200},
+  {id:'milk15',name:'Milch 1,5 %, laktosefrei',aliases:'milch lactosefree milk',cat:'Getränk',kcal:47,p:3.4,c:4.8,f:1.5,fi:0,portion:250,unit:'ml',portionLabel:'1 Glas ≈ 250 ml'},
+
+  {id:'oats',name:'Haferflocken',aliases:'hafer oats porridge',cat:'Kohlenhydrate',kcal:372,p:13.5,c:59,f:7,fi:10,portion:70},
+  {id:'ricecooked',name:'Reis, gekocht',aliases:'reis basmati jasmin cooked',cat:'Kohlenhydrate',kcal:130,p:2.7,c:28,f:0.3,fi:0.4,portion:250},
+  {id:'ricedry',name:'Reis, roh / trocken',aliases:'reis trocken roh ungekocht',cat:'Kohlenhydrate',kcal:350,p:7,c:78,f:0.7,fi:1.3,portion:80},
+  {id:'potato',name:'Kartoffeln, gekocht',aliases:'kartoffel potato',cat:'Kohlenhydrate',kcal:77,p:2,c:17,f:0.1,fi:2.2,portion:300},
+  {id:'sweetpotato',name:'Süßkartoffel',aliases:'süsskartoffel sweet potato',cat:'Kohlenhydrate',kcal:86,p:1.6,c:20,f:0.1,fi:3,portion:250},
+  {id:'pasta',name:'Nudeln, gekocht',aliases:'pasta spaghetti',cat:'Kohlenhydrate',kcal:157,p:5.8,c:31,f:0.9,fi:1.8,portion:250},
+  {id:'pastawhole',name:'Vollkornnudeln, gekocht',aliases:'vollkorn pasta nudeln',cat:'Kohlenhydrate',kcal:149,p:5.5,c:27,f:1.4,fi:4,portion:250},
+  {id:'breadwhole',name:'Vollkornbrot',aliases:'brot bread',cat:'Kohlenhydrate',kcal:230,p:8.5,c:40,f:3.5,fi:7,portion:50,portionLabel:'1–2 Scheiben ≈ 50 g'},
+  {id:'wrap',name:'Weizen-Wrap / Tortilla',aliases:'wrap tortilla',cat:'Kohlenhydrate',kcal:300,p:8,c:50,f:7,fi:3,portion:65,portionLabel:'1 Wrap ≈ 65 g'},
+  {id:'ricecake',name:'Reiswaffeln',aliases:'reiswaffel rice cake',cat:'Kohlenhydrate',kcal:385,p:8,c:81,f:3,fi:3,portion:18,portionLabel:'2 Stück ≈ 18 g'},
+
+  {id:'banana',name:'Banane',aliases:'banana',cat:'Obst',kcal:89,p:1.1,c:23,f:0.3,fi:2.6,portion:120,portionLabel:'1 Banane ≈ 120 g'},
+  {id:'apple',name:'Apfel',aliases:'apple',cat:'Obst',kcal:52,p:0.3,c:14,f:0.2,fi:2.4,portion:180,portionLabel:'1 Apfel ≈ 180 g'},
+  {id:'orange',name:'Orange',aliases:'apfelsine',cat:'Obst',kcal:47,p:0.9,c:12,f:0.1,fi:2.4,portion:180},
+  {id:'berries',name:'Beeren, gemischt',aliases:'beeren himbeeren blaubeeren erdbeeren',cat:'Obst',kcal:50,p:1,c:10,f:0.5,fi:4,portion:150},
+  {id:'grapes',name:'Weintrauben',aliases:'trauben grapes',cat:'Obst',kcal:69,p:0.7,c:18,f:0.2,fi:0.9,portion:150},
+  {id:'avocado',name:'Avocado',aliases:'avocado',cat:'Fette',kcal:160,p:2,c:8.5,f:15,fi:6.7,portion:100},
+
+  {id:'broccoli',name:'Brokkoli',aliases:'broccoli gemüse',cat:'Gemüse',kcal:34,p:2.8,c:7,f:0.4,fi:2.6,portion:200},
+  {id:'spinach',name:'Spinat',aliases:'spinach gemüse',cat:'Gemüse',kcal:23,p:2.9,c:3.6,f:0.4,fi:2.2,portion:150},
+  {id:'mixedveg',name:'Gemüsemix, ohne Sauce',aliases:'gemüse mix tiefkühl tk',cat:'Gemüse',kcal:50,p:2.5,c:8,f:0.5,fi:3,portion:250},
+  {id:'tomato',name:'Tomate',aliases:'tomaten tomato',cat:'Gemüse',kcal:18,p:0.9,c:3.9,f:0.2,fi:1.2,portion:150},
+  {id:'cucumber',name:'Gurke',aliases:'gurken cucumber',cat:'Gemüse',kcal:15,p:0.7,c:3.6,f:0.1,fi:0.5,portion:200},
+  {id:'pepper',name:'Paprika',aliases:'paprika pepper',cat:'Gemüse',kcal:31,p:1,c:6,f:0.3,fi:2.1,portion:150},
+  {id:'salad',name:'Blattsalat',aliases:'salat lettuce',cat:'Gemüse',kcal:15,p:1.4,c:2.9,f:0.2,fi:1.3,portion:100},
+
+  {id:'lentils',name:'Linsen, gekocht',aliases:'linsen lentils',cat:'Hülsenfrüchte',kcal:116,p:9,c:20,f:0.4,fi:7.9,portion:200},
+  {id:'chickpeas',name:'Kichererbsen, gekocht',aliases:'kichererbsen chickpeas',cat:'Hülsenfrüchte',kcal:164,p:8.9,c:27,f:2.6,fi:7.6,portion:180},
+  {id:'kidney',name:'Kidneybohnen, gekocht',aliases:'bohnen kidney beans',cat:'Hülsenfrüchte',kcal:127,p:8.7,c:23,f:0.5,fi:6.4,portion:180},
+
+  {id:'oliveoil',name:'Olivenöl',aliases:'öl olive oil',cat:'Fette',kcal:884,p:0,c:0,f:100,fi:0,portion:10,portionLabel:'1 EL ≈ 10 g'},
+  {id:'almonds',name:'Mandeln',aliases:'nüsse nuts almonds',cat:'Fette',kcal:579,p:21,c:22,f:50,fi:12.5,portion:30},
+  {id:'mixednuts',name:'Nussmix',aliases:'nüsse nuts',cat:'Fette',kcal:607,p:20,c:15,f:54,fi:8,portion:30},
+  {id:'peanutbutter',name:'Erdnussbutter',aliases:'peanut butter erdnuss',cat:'Fette',kcal:588,p:25,c:20,f:50,fi:6,portion:20},
+
+  {id:'doner',name:'Döner Kebab, grob',aliases:'döner kebab dönertasche',cat:'Fast Food',kcal:215,p:12,c:20,f:9,fi:1.5,portion:350,portionLabel:'1 Döner ≈ 350 g'},
+  {id:'donerplate',name:'Dönerteller mit Reis/Salat, grob',aliases:'dönerteller döner teller',cat:'Fast Food',kcal:180,p:13,c:15,f:7,fi:1.5,portion:500},
+  {id:'pizza',name:'Pizza Margherita, grob',aliases:'pizza',cat:'Fast Food',kcal:250,p:10,c:31,f:9,fi:2.2,portion:350},
+  {id:'fries',name:'Pommes frites',aliases:'pommes fries',cat:'Fast Food',kcal:312,p:3.4,c:41,f:15,fi:3.8,portion:150},
+  {id:'burger',name:'Burger, einfach, grob',aliases:'burger hamburger',cat:'Fast Food',kcal:260,p:14,c:24,f:12,fi:1.5,portion:220},
+  {id:'chocolatemilk',name:'Kakao / Schokomilch',aliases:'kakao schokomilch',cat:'Getränk',kcal:75,p:3.2,c:11,f:2,fi:0.5,portion:250,unit:'ml'},
+  {id:'juice',name:'Orangensaft / Saft',aliases:'saft juice',cat:'Getränk',kcal:45,p:0.7,c:10.4,f:0.2,fi:0.2,portion:250,unit:'ml'},
+  {id:'zero',name:'Zero-Getränk',aliases:'cola zero pepsi zero softdrink',cat:'Getränk',kcal:0,p:0,c:0,f:0,fi:0,portion:330,unit:'ml'},
+  {id:'chocolate',name:'Schokolade, Vollmilch',aliases:'schokolade chocolate süßigkeit',cat:'Snack',kcal:535,p:7.5,c:59,f:30,fi:3,portion:25},
+  {id:'dates',name:'Datteln',aliases:'datteln dates',cat:'Snack',kcal:282,p:2.5,c:75,f:0.4,fi:8,portion:30}
 ];
+
+const MEAL_PRESETS = [
+  { name: 'Körniger Frischkäse + Protein-Milchreis', cal: 405, protein: 52.5, carbs: 21.5, fat: 8, fiber: 0 },
+  { name: 'Porridge + Whey', cal: 377, protein: 32.9, carbs: 43.7, fat: 6.7, fiber: 7.3 },
+  { name: 'Whey + Banane', cal: 224, protein: 24.7, carbs: 30, fat: 2.2, fiber: 3.4 },
+  { name: 'Hähnchen + Reis + Gemüse', cal: 705, protein: 70, carbs: 90, fat: 9, fiber: 8 },
+  { name: 'Döner grob', cal: 753, protein: 42, carbs: 70, fat: 31.5, fiber: 5.3 }
+];
+
+const normalizeFoodText = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ß/g,'ss').trim();
+const round1 = n => Math.round((+n || 0) * 10) / 10;
+let selectedFood = null;
+
+function foodMacros(food, amount) {
+  const factor = Math.max(0, +amount || 0) / 100;
+  return {
+    cal: Math.round(food.kcal * factor),
+    protein: round1(food.p * factor),
+    carbs: round1(food.c * factor),
+    fat: round1(food.f * factor),
+    fiber: round1(food.fi * factor)
+  };
+}
+
+function foodCoachAnalysis(totals = mealTotals()) {
+  const target = state.settings;
+  const left = {
+    cal: target.calories - totals.calories,
+    p: target.protein - totals.protein,
+    c: target.carbs - totals.carbs,
+    f: target.fat - totals.fat,
+    fi: target.fiber - totals.fiber
+  };
+  if (state.settings.vacation) {
+    return { badge:'URLAUB', cls:'light', title:'Protein zuerst', text:`Heute ${Math.round(totals.protein)} g Protein. Im Urlaub reicht: Protein zu jeder Hauptmahlzeit, Wasser/Zero und nicht jedes Buffet maximal ausnutzen.`, short:`Urlaubsmodus · ${Math.max(0,Math.round(left.p))} g Protein bis zum normalen Ziel.` };
+  }
+  if (totals.calories === 0) {
+    return { badge:'START', cls:'', title:'Noch nichts gegessen', text:'Starte mit einer proteinreichen Mahlzeit. Hähnchen, Skyr, körniger Frischkäse oder Eier + eine Kohlenhydratquelle passen gut.', short:'Noch nichts geloggt · erste Mahlzeit proteinreich planen.' };
+  }
+  if (left.cal < -150) {
+    let extra = left.p > 15 ? ` Protein fehlen trotzdem noch etwa ${Math.round(left.p)} g – falls Hunger da ist, sehr mager auffüllen (z. B. Skyr/Whey/Thunfisch).` : ' Protein ist ausreichend.';
+    return { badge:'KCAL HOCH', cls:'stop', title:'Kalorien heute zu hoch', text:`Du liegst etwa ${Math.abs(Math.round(left.cal))} kcal über deinem Ziel.${extra} Jetzt keine kaloriendichten Extras mehr nötig.`, short:`${Math.abs(Math.round(left.cal))} kcal über Ziel · ${left.p>0?Math.round(left.p)+' g Protein fehlen':'Protein passt'}.` };
+  }
+  if (left.p > 35 && left.cal < 350) {
+    return { badge:'PROTEIN', cls:'light', title:'Protein fehlt – Kalorien sind knapp', text:`Noch ca. ${Math.round(left.p)} g Protein, aber nur ${Math.max(0,Math.round(left.cal))} kcal frei. Nimm jetzt etwas sehr Proteinreiches: 30 g Whey, 250 g Skyr oder 150 g Thunfisch/Hähnchen.`, short:`Protein priorisieren: ${Math.round(left.p)} g fehlen, ${Math.max(0,Math.round(left.cal))} kcal übrig.` };
+  }
+  if (left.p > 25) {
+    let suggestion;
+    if (left.p > 50 && left.cal >= 450) suggestion = 'Sehr effizient: 200 g Hähnchen und später 250 g Skyr – damit holst du viel Protein bei moderaten Kalorien.';
+    else if (left.cal > 550) suggestion = 'Gute nächste Mahlzeit: 200 g Hähnchen + 250 g gekochter Reis + Gemüse.';
+    else suggestion = 'Gute Optionen: 250 g Skyr plus 30 g Whey oder 200 g mageres Hähnchen/Thunfisch.';
+    return { badge:'EIWEISS', cls:'light', title:`Noch ${Math.round(left.p)} g Protein`, text:`Du hast noch ca. ${Math.max(0,Math.round(left.cal))} kcal frei. ${suggestion}`, short:`${Math.round(left.p)} g Protein fehlen · ${Math.max(0,Math.round(left.cal))} kcal übrig.` };
+  }
+  if (totals.fat > target.fat + 10 && left.cal > 100) {
+    return { badge:'FETT HOCH', cls:'light', title:'Fett ist heute schon hoch', text:`Du liegst bei etwa ${Math.round(totals.fat)} g Fett. Für den Rest des Tages eher mager essen: Hähnchen, Thunfisch, Skyr, Reis/Kartoffeln und Gemüse – Öl, Nüsse und sehr fettes Fast Food heute klein halten.`, short:`Fett bei ${Math.round(totals.fat)} g · Rest des Tages eher mager wählen.` };
+  }
+  if (left.fi > 10 && left.cal > 150) {
+    return { badge:'BALLASTSTOFFE', cls:'light', title:'Protein passt – Ballaststoffe fehlen', text:`Protein ist fast/komplett drin. Noch ca. ${Math.round(left.fi)} g Ballaststoffe fehlen. Ergänze Gemüse, Beeren, Apfel, Linsen oder Haferflocken.`, short:`Protein passt · noch ${Math.round(left.fi)} g Ballaststoffe anpeilen.` };
+  }
+  if (left.cal > 450) {
+    return { badge:'MEHR ESSEN', cls:'', title:'Du hast noch Luft', text:`Noch ungefähr ${Math.round(left.cal)} kcal frei. Protein ist gut. Fülle jetzt vor allem mit normalem Essen – Reis/Kartoffeln, Gemüse und etwas Fett nach Bedarf.`, short:`Noch ${Math.round(left.cal)} kcal frei · Protein fast/komplett getroffen.` };
+  }
+  if (left.cal >= -100) {
+    return { badge:'PASST', cls:'', title:'Tagesziel sehr gut getroffen', text:`Kalorien und Protein liegen nah am Ziel. ${left.fi > 5 ? `Wenn noch Hunger da ist: Gemüse/Obst für etwa ${Math.round(left.fi)} g fehlende Ballaststoffe.` : 'Für heute musst du nichts erzwingen.'}`, short:'Kalorien und Protein liegen im Zielbereich.' };
+  }
+  return { badge:'OK', cls:'', title:'Protein passt', text:'Protein ist im Ziel. Behalte jetzt nur noch die Gesamtkalorien im Auge.', short:`Protein passt · ${Math.max(0,Math.round(left.cal))} kcal übrig.` };
+}
+
+function foodSearch(query) {
+  const q = normalizeFoodText(query);
+  if (!q) return FOOD_DB.filter(f => ['chicken','ricecooked','cottage','proteinrice','oats','whey','banana','skyr','egg','potato','doner','mixedveg'].includes(f.id));
+  const parts = q.split(/\s+/).filter(Boolean);
+  return FOOD_DB.filter(f => {
+    const hay = normalizeFoodText(`${f.name} ${f.aliases || ''} ${f.cat || ''}`);
+    return parts.every(part => hay.includes(part));
+  }).slice(0,12);
+}
+
+function recentFoodIds() {
+  const entries = Object.entries(state.meals || {}).sort(([a],[b])=>b.localeCompare(a));
+  const ids=[];
+  for (const [,meals] of entries) {
+    for (let i=(meals||[]).length-1;i>=0;i--) {
+      const id=meals[i]?.foodId;
+      if (id && !ids.includes(id)) ids.push(id);
+      if (ids.length>=8) return ids;
+    }
+  }
+  return ids;
+}
+
+function addFoodEntry(food, amount, key = localDateKey()) {
+  const macros = foodMacros(food, amount);
+  state.meals[key] ||= [];
+  state.meals[key].push({
+    id: Date.now() + Math.floor(Math.random()*1000), foodId: food.id, name: food.name,
+    amount: round1(amount), unit: food.unit || 'g', ...macros
+  });
+  saveState();
+}
 
 function latestStrength() {
   return [...state.strengthTests].sort((a, b) => a.date.localeCompare(b.date)).at(-1) || defaultState.strengthTests[0];
@@ -377,7 +539,7 @@ function previousWeekWeightAvg() {
 
 function addMeal(meal, key = localDateKey()) {
   state.meals[key] ||= [];
-  state.meals[key].push({ ...meal, id: Date.now() + Math.floor(Math.random() * 1000) });
+  state.meals[key].push({ carbs:0, fat:0, fiber:0, ...meal, id: Date.now() + Math.floor(Math.random() * 1000) });
   saveState();
 }
 
@@ -526,10 +688,8 @@ function renderDashboard() {
   document.getElementById('todayCalories').textContent = meals.calories;
   document.getElementById('todayProtein').textContent = meals.protein;
   document.getElementById('calProgress').style.width = `${clamp(meals.calories / state.settings.calories * 100, 0, 100)}%`;
-  const calLeft = state.settings.calories - meals.calories, protLeft = state.settings.protein - meals.protein;
-  document.getElementById('nutritionCoach').textContent = state.settings.vacation
-    ? 'Urlaubsmodus: Gewicht ungefähr halten, Protein priorisieren, kein aggressiver Cut.'
-    : `${calLeft > 0 ? `${calLeft} kcal übrig` : `${Math.abs(calLeft)} kcal über Ziel`} · ${protLeft > 0 ? `${protLeft} g Protein fehlen` : 'Proteinziel geschafft ✓'}`;
+  const nutritionAnalysis = foodCoachAnalysis(meals);
+  document.getElementById('nutritionCoach').textContent = nutritionAnalysis.short;
 
   document.getElementById('todayWorkoutTitle').textContent = plan.title;
   document.getElementById('todayDuration').textContent = plan.duration;
@@ -843,30 +1003,93 @@ function startHandstandSession() {
   }, false);
 }
 
+function setBar(id, value, target) {
+  const el = document.getElementById(id); if (!el) return;
+  el.style.width = `${clamp((+value || 0) / Math.max(1,+target || 1) * 100, 0, 100)}%`;
+}
+
+function renderFoodSearchResults(query = '') {
+  const root = document.getElementById('foodSearchResults'); if (!root) return;
+  const results = foodSearch(query);
+  root.innerHTML = results.length ? results.map(f => `<button type="button" class="food-result" data-food-id="${f.id}"><span><b>${f.name}</b><small>${f.cat} · ${f.kcal} kcal · ${f.p} g P / 100 ${f.unit||'g'}</small></span><span>+</span></button>`).join('') : '<p class="muted">Kein Treffer. Nutze unten „Eigene / verpackte Lebensmittel“.</p>';
+  root.querySelectorAll('[data-food-id]').forEach(btn=>btn.onclick=()=>selectFood(btn.dataset.foodId));
+}
+
+function selectFood(id) {
+  selectedFood = FOOD_DB.find(f=>f.id===id) || null;
+  const card=document.getElementById('selectedFoodCard'); if (!card) return;
+  if (!selectedFood) { card.classList.add('hidden'); return; }
+  card.classList.remove('hidden');
+  document.getElementById('selectedFoodName').textContent=selectedFood.name;
+  document.getElementById('selectedFoodPer100').textContent=`100 ${selectedFood.unit||'g'}: ${selectedFood.kcal} kcal · ${selectedFood.p} g Protein · ${selectedFood.c} g KH · ${selectedFood.f} g Fett · ${selectedFood.fi} g Ballaststoffe`;
+  document.getElementById('foodAmountUnit').textContent=selectedFood.unit||'g';
+  document.getElementById('foodAmount').value=selectedFood.portion||100;
+  const quick=[50,100,selectedFood.portion||100,200,250].filter((v,i,a)=>v>0&&a.indexOf(v)===i).slice(0,4);
+  document.getElementById('foodQuickPortions').innerHTML=quick.map(v=>`<button type="button" data-food-amount="${v}">${selectedFood.portion===v&&selectedFood.portionLabel?selectedFood.portionLabel:`${v} ${selectedFood.unit||'g'}`}</button>`).join('');
+  document.querySelectorAll('[data-food-amount]').forEach(b=>b.onclick=()=>{document.getElementById('foodAmount').value=b.dataset.foodAmount;updateSelectedFoodCalc();});
+  updateSelectedFoodCalc();
+  card.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function updateSelectedFoodCalc() {
+  if (!selectedFood) return;
+  const amount=+document.getElementById('foodAmount').value||0, m=foodMacros(selectedFood,amount);
+  document.getElementById('selectedFoodCalories').textContent=`${m.cal} kcal`;
+  document.getElementById('selectedFoodMacros').textContent=`${m.protein} g P · ${m.carbs} g KH · ${m.fat} g F · ${m.fiber} g Ballastst.`;
+}
+
+function renderRecentFoods() {
+  const root=document.getElementById('recentFoods'); if (!root) return;
+  const recents=recentFoodIds().map(id=>FOOD_DB.find(f=>f.id===id)).filter(Boolean);
+  const foods=(recents.length?recents:foodSearch('')).slice(0,8);
+  root.innerHTML=foods.map(f=>`<button type="button" class="food-quick" data-recent-food="${f.id}"><b>${f.name}</b><small>${f.portion||100} ${f.unit||'g'} · ${foodMacros(f,f.portion||100).cal} kcal</small></button>`).join('');
+  root.querySelectorAll('[data-recent-food]').forEach(btn=>btn.onclick=()=>selectFood(btn.dataset.recentFood));
+}
+
 function renderMeals() {
   const key = localDateKey(); state.meals[key] ||= [];
-  const list = state.meals[key], totals = mealTotals(key), d = state.daily[key] || {};
+  const list = state.meals[key], totals = mealTotals(key), d = state.daily[key] || {}, t=state.settings;
+  const analysis=foodCoachAnalysis(totals);
   document.getElementById('foodCalories').textContent = totals.calories;
   document.getElementById('foodProtein').textContent = `${totals.protein} g`;
-  document.getElementById('foodCaloriesLeft').textContent = state.settings.vacation ? 'Urlaub: Erhalt' : `${Math.max(0, state.settings.calories - totals.calories)} übrig`;
-  document.getElementById('foodProteinLeft').textContent = `${Math.max(0, state.settings.protein - totals.protein)} g übrig`;
+  document.getElementById('foodCarbs').textContent = `${totals.carbs} g`;
+  document.getElementById('foodFat').textContent = `${totals.fat} g`;
+  document.getElementById('foodFiber').textContent = `${totals.fiber} g`;
+  document.getElementById('foodCaloriesLeft').textContent = state.settings.vacation ? 'Urlaub: ungefähr halten' : `${Math.max(0,t.calories-totals.calories)} übrig`;
+  document.getElementById('foodProteinLeft').textContent = `${Math.max(0,round1(t.protein-totals.protein))} g übrig`;
+  document.getElementById('foodCarbsLeft').textContent = `${Math.max(0,round1(t.carbs-totals.carbs))} g übrig`;
+  document.getElementById('foodFatLeft').textContent = `${Math.max(0,round1(t.fat-totals.fat))} g übrig`;
+  document.getElementById('foodFiberLeft').textContent = `${Math.max(0,round1(t.fiber-totals.fiber))} g bis Ziel`;
   document.getElementById('foodWater').textContent = `${d.water ?? 0} L`;
   document.getElementById('foodCreatine').textContent = d.creatine ? 'Ja' : 'Nein';
   document.getElementById('foodModeBadge').textContent = state.settings.vacation ? 'URLAUB' : 'CUT';
-  document.getElementById('mealList').innerHTML = list.length ? list.map(m => `<div class="meal-log-item"><div><b>${m.name}</b><small>${m.cal} kcal · ${m.protein} g Protein</small></div><button type="button" data-delmeal="${m.id}">×</button></div>`).join('') : '<p class="muted">Noch nichts geloggt.</p>';
-  document.querySelectorAll('[data-delmeal]').forEach(btn => btn.onclick = () => { state.meals[key] = list.filter(m => m.id !== +btn.dataset.delmeal); saveState(); });
+  const badge=document.getElementById('foodCoachBadge'); badge.textContent=analysis.badge; badge.className=`mode-badge ${analysis.cls||''}`;
+  document.getElementById('foodCoachTitle').textContent=analysis.title;
+  document.getElementById('foodCoachAdvice').textContent=analysis.text;
+  setBar('foodCaloriesBar',totals.calories,t.calories); setBar('foodProteinBar',totals.protein,t.protein); setBar('foodCarbsBar',totals.carbs,t.carbs); setBar('foodFatBar',totals.fat,t.fat);
+  document.getElementById('mealList').innerHTML = list.length ? list.map(m => `<div class="meal-log-item"><div><b>${m.name}</b><small>${m.amount?`${m.amount} ${m.unit||'g'} · `:''}${Math.round(+m.cal||0)} kcal · ${round1(m.protein)} g P · ${round1(m.carbs)} g KH · ${round1(m.fat)} g F${(+m.fiber||0)>0?` · ${round1(m.fiber)} g Ballastst.`:''}</small></div><button type="button" data-delmeal="${m.id}">×</button></div>`).join('') : '<p class="muted">Noch nichts geloggt.</p>';
+  document.querySelectorAll('[data-delmeal]').forEach(btn => btn.onclick = () => { state.meals[key] = list.filter(m => String(m.id) !== String(btn.dataset.delmeal)); saveState(); });
+  renderRecentFoods();
+  if (!selectedFood) renderFoodSearchResults(document.getElementById('foodSearch')?.value || '');
 }
 
-function renderMealPresets() {
-  const root = document.getElementById('mealPresets');
-  root.innerHTML = MEAL_PRESETS.map((m, i) => `<button type="button" data-preset="${i}">${m.name}</button>`).join('');
-  root.querySelectorAll('[data-preset]').forEach(btn => btn.onclick = () => addMeal(MEAL_PRESETS[+btn.dataset.preset]));
-}
+function renderMealPresets() { /* Food Tracker ersetzt die alte Preset-Liste auf der Essen-Seite. */ }
+
+document.getElementById('foodSearch')?.addEventListener('input',e=>renderFoodSearchResults(e.target.value));
+document.getElementById('foodAmount')?.addEventListener('input',updateSelectedFoodCalc);
+document.getElementById('clearSelectedFood')?.addEventListener('click',()=>{selectedFood=null;document.getElementById('selectedFoodCard').classList.add('hidden');document.getElementById('foodSearch').value='';renderFoodSearchResults('');});
+document.getElementById('addSelectedFood')?.addEventListener('click',()=>{
+  if(!selectedFood)return; const amount=+document.getElementById('foodAmount').value; if(!amount||amount<=0)return;
+  addFoodEntry(selectedFood,amount); selectedFood=null; document.getElementById('selectedFoodCard').classList.add('hidden'); document.getElementById('foodSearch').value=''; renderFoodSearchResults('');
+});
+
 document.getElementById('mealForm').onsubmit = e => {
-  e.preventDefault(); const name = document.getElementById('mealName').value.trim(); const cal = +document.getElementById('mealCalories').value; const protein = +document.getElementById('mealProtein').value || 0;
-  if (!name || !cal) return; addMeal({ name, cal, protein }); e.target.reset();
+  e.preventDefault(); const name = document.getElementById('mealName').value.trim(); const cal = +document.getElementById('mealCalories').value;
+  if (!name || !cal) return;
+  addMeal({ name, cal, protein:+document.getElementById('mealProtein').value||0, carbs:+document.getElementById('mealCarbs').value||0, fat:+document.getElementById('mealFat').value||0, fiber:+document.getElementById('mealFiber').value||0 });
+  e.target.reset();
 };
-document.getElementById('clearMeals').onclick = () => { if (confirm('Heutige Mahlzeiten wirklich leeren?')) { state.meals[localDateKey()] = []; saveState(); } };
+document.getElementById('clearMeals').onclick = () => { if (confirm('Heutige Lebensmittel wirklich komplett leeren?')) { state.meals[localDateKey()] = []; saveState(); } };
 
 function renderVacation() {
   const card = document.getElementById('vacationCard'); card.classList.toggle('active', state.settings.vacation);
@@ -1166,7 +1389,7 @@ async function exportBackup() {
   try{photoBlobs=await photoGetAll();}catch(e){console.warn('Fotos konnten nicht ins Backup aufgenommen werden',e);}
   const backup={...state,photoBlobs};
   const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}),a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);a.download=`calisthenics-coach-v2.4-${localDateKey()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  a.href=URL.createObjectURL(blob);a.download=`calisthenics-coach-v2.5-${localDateKey()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 document.getElementById('exportBtn').onclick=exportBackup;
 document.getElementById('importFile').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;try{const raw=JSON.parse(await f.text());const blobs=Array.isArray(raw.photoBlobs)?raw.photoBlobs:[];delete raw.photoBlobs;state=migrate(raw);for(const rec of blobs){try{await photoPut(rec);}catch(err){console.warn(err);}}saveState();renderAll();alert('Backup importiert ✓');}catch(err){console.error(err);alert('Backup konnte nicht gelesen werden.');}};
