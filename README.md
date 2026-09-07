@@ -1,19 +1,15 @@
-# Calisthenics Coach V2.5
+# Calisthenics Coach V3
 
-Persönliche offline-fähige PWA für Training, Ernährung und Fortschritt. Bestehende V2-Daten bleiben erhalten.
+V3 ist die visuell überarbeitete, cleanere Mockup-Edition der App.
 
-## Neu in V2.5 – Food Tracker
+## Schwerpunkte
 
-- integrierte Datenbank mit gängigen Lebensmitteln
-- Lebensmittel suchen, Menge in g/ml eingeben, Nährwerte werden automatisch berechnet
-- Tracking von Kalorien, Protein, Kohlenhydraten, Fett und Ballaststoffen
-- automatische Tagesbewertung: z. B. Protein fehlt, Kalorien zu hoch, noch essen, Ballaststoffe ergänzen
-- schnelle Portionen und zuletzt verwendete Lebensmittel
-- eigene/verpackte Lebensmittel können weiterhin manuell über das Etikett erfasst werden
-- bestehende Mahlzeiten aus älteren App-Versionen bleiben kompatibel
-
-Die hinterlegten Lebensmittelwerte sind allgemeine Richtwerte. Bei verpackten Produkten ist das Herstelleretikett maßgeblich.
+- deutlich minimalistischere Oberfläche
+- stärker an der früheren Mockup-Richtung orientiert
+- weniger überladene Screens
+- gleicher Funktionsumfang wie V2.5 als Basis
+- Food Tracker mit automatischer Berechnung von kcal, Protein, KH, Fett und Ballaststoffen
 
 ## GitHub Pages
 
-Den kompletten Inhalt dieses Ordners direkt in den Repository-Hauptordner laden. `index.html` muss auf oberster Ebene liegen. GitHub Pages weiter über `main` + `/(root)` ausliefern.
+Die Dateien inklusive `index.html`, `app.js`, `styles.css`, `manifest.webmanifest`, `sw.js`, `404.html`, `icons` und `assets` direkt in den Root des Repositories hochladen.

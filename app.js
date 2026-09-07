@@ -1,7 +1,7 @@
 'use strict';
 
 const STORE_KEY = 'calisthenicsCoach_v2'; // bewusst gleich: V2-Daten bleiben erhalten
-const VERSION = '2.5.0';
+const VERSION = '3.0.0';
 
 const pad = n => String(n).padStart(2, '0');
 const localDateKey = (date = new Date()) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
@@ -1389,7 +1389,7 @@ async function exportBackup() {
   try{photoBlobs=await photoGetAll();}catch(e){console.warn('Fotos konnten nicht ins Backup aufgenommen werden',e);}
   const backup={...state,photoBlobs};
   const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}),a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);a.download=`calisthenics-coach-v2.5-${localDateKey()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  a.href=URL.createObjectURL(blob);a.download=`calisthenics-coach-v3-${localDateKey()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 document.getElementById('exportBtn').onclick=exportBackup;
 document.getElementById('importFile').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;try{const raw=JSON.parse(await f.text());const blobs=Array.isArray(raw.photoBlobs)?raw.photoBlobs:[];delete raw.photoBlobs;state=migrate(raw);for(const rec of blobs){try{await photoPut(rec);}catch(err){console.warn(err);}}saveState();renderAll();alert('Backup importiert ✓');}catch(err){console.error(err);alert('Backup konnte nicht gelesen werden.');}};
