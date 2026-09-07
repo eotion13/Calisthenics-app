@@ -178,3 +178,59 @@ canvas{display:block;width:100%;height:220px;background:#0d182a;border-radius:20
   .photo-upload-grid{grid-template-columns:repeat(3,1fr)}
   .warmup-step{grid-template-columns:64px 1fr}
 }
+
+/* V3.1 mobile hardening / cleanup */
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+body{min-width:0}
+.app-shell{width:100%;max-width:460px;min-width:0;overflow:visible}
+.view,.card,.subcard,.section-head,.grid-2,.grid-4,.nested-grid,.food-macro-grid,.food-secondary-row,.food-search-card,.workout-list,.guided-shell{min-width:0;max-width:100%}
+.card>*,.subcard>*,.section-head>*,.food-result>*,.meal-log-item>*{min-width:0}
+#onlineBadge{display:none}
+.topbar{padding-top:calc(11px + env(safe-area-inset-top));padding-bottom:11px;align-items:center}
+.topbar .eyebrow{display:none}
+.topbar h1{font-size:1rem;font-weight:850;letter-spacing:-.02em}
+.section-head p{line-height:1.35;font-size:.86rem;max-width:30ch}
+.food-search-results:empty{display:none}
+.food-result b,.food-quick b,.meal-log-item b{overflow-wrap:anywhere}
+.food-result small,.meal-log-item small{overflow-wrap:anywhere}
+.bottom-nav{overflow:hidden}
+.nav-btn{min-width:0}
+.visual,.coach-visual{max-height:340px}
+.visual .exercise-photo,.coach-visual .exercise-photo{width:100%;height:auto;max-height:340px;object-fit:cover}
+.exercise-card:has(.warmup-list)>.visual{display:none}
+
+@media (max-width:520px){
+  .app-shell{padding:10px 10px 0}
+  .card{padding:14px;margin-bottom:12px;border-radius:22px}
+  .section-head{margin-top:5px;margin-bottom:10px}
+  .section-head h2{font-size:1.45rem}
+  .hero.compact-hero{padding:16px}
+  .hero h2{font-size:1.45rem;max-width:none}
+  .hero-stats.clean{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+  .hero-stats.clean>div{padding:10px 6px;border-radius:14px}
+  .hero-stats.clean small{font-size:.6rem;margin-bottom:5px}
+  .hero-stats.clean span{font-size:1.05rem}
+  .main-grid,.grid-2,.metric-grid,.food-macro-grid,.settings-grid{grid-template-columns:1fr 1fr}
+  .main-grid>article:first-child{grid-column:1/-1}
+  .main-grid>article:last-child{grid-column:1/-1}
+  .food-secondary-row{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .food-secondary-row span{padding:10px 8px;font-size:.67rem;overflow:hidden}
+  .food-secondary-row b{font-size:.9rem;white-space:nowrap}
+  .food-quick-grid{grid-template-columns:1fr 1fr}
+  .food-quick{padding:10px}
+  .form-grid,.details-grid,.set-entry,.food-add-grid{grid-template-columns:1fr 1fr}
+  .form-grid .span-2,.inline-details.span-2{grid-column:1/-1}
+  .food-add-grid>label{min-width:0}
+  .food-live-calc{min-width:0}
+  .photo-upload-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .compact-row{display:grid;grid-template-columns:1fr 1fr}
+  .compact-row>*{width:auto}
+  .compact-row .grow:only-child{grid-column:1/-1}
+  .reminder-card,.vacation-card{flex-direction:column;align-items:stretch}
+  .reminder-card button,.vacation-card button{width:100%}
+  .warmup-step{grid-template-columns:58px minmax(0,1fr);padding:8px}
+  .exercise-photo.compact{width:58px;height:58px}
+  .bottom-nav{padding-left:6px;padding-right:6px;gap:4px}
+  .nav-btn{font-size:.61rem;padding:7px 2px;border-radius:14px}
+  .nav-btn span{font-size:1.08rem}
+}
