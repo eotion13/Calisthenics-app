@@ -1,7 +1,7 @@
 'use strict';
 
 const STORE_KEY = 'calisthenicsCoach_v2'; // bewusst gleich: V2-Daten bleiben erhalten
-const VERSION = '2.1.0';
+const VERSION = '2.2.0';
 
 const pad = n => String(n).padStart(2, '0');
 const localDateKey = (date = new Date()) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
@@ -194,6 +194,7 @@ const EX = {
 
 const WARMUP_STEPS = [
   ['Armkreisen', '30–45 s je Richtung', 'circles'],
+  ['Handgelenke mobilisieren', '30–45 s', 'wrists'],
   ['Band Pull-Aparts', '2×15', 'pullapart'],
   ['Band External Rotation', '2×12 je Seite', 'external'],
   ['Scapular Pull-ups', '2×5', 'scapPull'],
@@ -393,89 +394,196 @@ function progressionCards() {
 }
 
 function visualSVG(kind, compact = false) {
-  const W = 420, H = compact ? 100 : 210;
-  const c = '#eaf2ff', a = '#61e6b7', b = '#7db7ff', line = '#294662', muted = '#7890a8';
-  const ln = (x1, y1, x2, y2, color = c, w = 6) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="${w}" stroke-linecap="round"/>`;
-  const head = (x, y, r = 9) => `<circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="${c}" stroke-width="5"/>`;
-  const txt = (x, y, t, color = a, size = 12) => `<text x="${x}" y="${y}" fill="${color}" font-size="${size}" font-family="system-ui" font-weight="800">${t}</text>`;
-  const arrow = (x1, y1, x2, y2) => `${ln(x1,y1,x2,y2,a,3)}<polyline points="${x2-6},${y2-5} ${x2},${y2} ${x2-6},${y2+5}" fill="none" stroke="${a}" stroke-width="3"/>`;
-  const base = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Übungsdarstellung"><rect width="${W}" height="${H}" rx="18" fill="#071321"/><line x1="210" y1="28" x2="210" y2="${H-14}" stroke="#17314a" stroke-width="2" stroke-dasharray="5 7"/>${txt(18,22,'START',b,10)}${txt(228,22,'ZIEL',a,10)}`;
-  const end = '</svg>';
+  const W = 420, H = compact ? 92 : 220;
+  const bg = '#0b1623', panel = '#101d2d', panel2 = '#122338', line = '#23384f';
+  const text = '#eef4fb', muted = '#9fb3c9', accent = '#79e4bf', accent2 = '#8ec5ff', accent3 = '#f1d37a';
+  const svgText = (x, y, t, fill = text, size = 12, weight = 800, anchor = 'start') =>     '<text x="' + x + '" y="' + y + '" fill="' + fill + '" font-size="' + size + '" font-family="system-ui, sans-serif" font-weight="' + weight + '" text-anchor="' + anchor + '">' + t + '</text>';
+  const lineSeg = (x1, y1, x2, y2, color = accent2, width = 12) =>     '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + color + '" stroke-width="' + width + '" stroke-linecap="round" />';
+  const roundRect = (x, y, w, h, r = 18, fill = panel, stroke = 'rgba(255,255,255,.05)') =>     '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + r + '" fill="' + fill + '" stroke="' + stroke + '" />';
+  const circle = (x, y, r, fill = accent2) => '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="' + fill + '" />';
+  const pill = (x, y, w, h, fill = accent2) => '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + (h/2) + '" fill="' + fill + '" />';
+  const label = (x, y, t) => roundRect(x, y - 16, 64, 24, 12, '#102132', '#1d334b') + svgText(x + 32, y, t, accent, 10, 900, 'middle');
+  const arrow = (x1, y1, x2, y2, color = accent) => lineSeg(x1, y1, x2, y2, color, 4) + '<path d="M ' + (x2 - 7) + ' ' + (y2 - 6) + ' L ' + x2 + ' ' + y2 + ' L ' + (x2 - 7) + ' ' + (y2 + 6) + '" fill="none" stroke="' + color + '" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />';
+  const ground = (x, y, w) => lineSeg(x, y, x + w, y, line, 3);
+  const bar = (x, y, w) => lineSeg(x, y, x + w, y, accent2, 7);
+  const band = (x1, y1, x2, y2) => '<path d="M ' + x1 + ' ' + y1 + ' C ' + x1 + ' ' + (y1 + 20) + ', ' + x2 + ' ' + (y2 - 20) + ', ' + x2 + ' ' + y2 + '" fill="none" stroke="' + accent + '" stroke-width="8" stroke-linecap="round" />';
+  const rig = (x, y, h) => lineSeg(x, y, x, y + h, line, 6);
+  const silhouette = (cx, cy, pose = 'stand', color = accent2) => {
+    const headY = cy - 38;
+    let s = circle(cx, headY, 13, color) + pill(cx - 14, cy - 20, 28, 48, color);
+    if (pose === 'hang') {
+      s += lineSeg(cx - 10, cy - 8, cx - 28, cy - 50, color, 14) + lineSeg(cx + 10, cy - 8, cx + 28, cy - 50, color, 14);
+      s += lineSeg(cx - 8, cy + 25, cx - 16, cy + 62, color, 14) + lineSeg(cx + 8, cy + 25, cx + 16, cy + 62, color, 14);
+    } else if (pose === 'top') {
+      s += lineSeg(cx - 8, cy - 12, cx - 26, cy - 28, color, 14) + lineSeg(cx + 8, cy - 12, cx + 26, cy - 28, color, 14);
+      s += lineSeg(cx - 8, cy + 25, cx - 18, cy + 58, color, 14) + lineSeg(cx + 8, cy + 25, cx + 18, cy + 58, color, 14);
+    } else if (pose === 'dipTop') {
+      s += lineSeg(cx - 8, cy - 8, cx - 36, cy + 8, color, 14) + lineSeg(cx + 8, cy - 8, cx + 36, cy + 8, color, 14);
+      s += lineSeg(cx - 8, cy + 25, cx - 18, cy + 60, color, 14) + lineSeg(cx + 8, cy + 25, cx + 18, cy + 60, color, 14);
+    } else if (pose === 'dipBottom') {
+      s += lineSeg(cx - 8, cy - 4, cx - 34, cy - 6, color, 14) + lineSeg(cx + 8, cy - 4, cx + 34, cy - 6, color, 14);
+      s += lineSeg(cx - 8, cy + 25, cx - 14, cy + 58, color, 14) + lineSeg(cx + 8, cy + 25, cx + 14, cy + 58, color, 14);
+    } else if (pose === 'rowLow') {
+      s += lineSeg(cx - 10, cy - 6, cx - 38, cy - 26, color, 14) + lineSeg(cx + 10, cy - 6, cx + 38, cy - 26, color, 14);
+      s += lineSeg(cx - 8, cy + 25, cx - 26, cy + 55, color, 14) + lineSeg(cx + 8, cy + 25, cx + 26, cy + 55, color, 14);
+    } else if (pose === 'rowHigh') {
+      s += lineSeg(cx - 10, cy - 8, cx - 40, cy - 18, color, 14) + lineSeg(cx + 10, cy - 8, cx + 40, cy - 18, color, 14);
+      s += lineSeg(cx - 8, cy + 25, cx - 26, cy + 55, color, 14) + lineSeg(cx + 8, cy + 25, cx + 26, cy + 55, color, 14);
+    } else if (pose === 'splitTop') {
+      s += lineSeg(cx - 8, cy - 8, cx - 28, cy + 10, color, 14) + lineSeg(cx + 8, cy - 8, cx + 26, cy + 8, color, 14);
+      s += lineSeg(cx - 6, cy + 26, cx - 28, cy + 64, color, 14) + lineSeg(cx + 6, cy + 26, cx + 48, cy + 36, color, 14) + lineSeg(cx + 48, cy + 36, cx + 70, cy + 62, color, 14);
+    } else if (pose === 'splitBottom') {
+      s += lineSeg(cx - 8, cy - 10, cx - 20, cy + 12, color, 14) + lineSeg(cx + 8, cy - 10, cx + 16, cy + 10, color, 14);
+      s += lineSeg(cx - 6, cy + 26, cx - 22, cy + 64, color, 14) + lineSeg(cx + 6, cy + 26, cx + 56, cy + 28, color, 14) + lineSeg(cx + 56, cy + 28, cx + 76, cy + 62, color, 14);
+    } else if (pose === 'pikeTop') {
+      s += lineSeg(cx - 2, cy - 8, cx - 28, cy + 12, color, 14) + lineSeg(cx + 2, cy - 8, cx + 28, cy + 12, color, 14);
+      s += lineSeg(cx - 8, cy + 25, cx - 28, cy + 62, color, 14) + lineSeg(cx + 8, cy + 25, cx + 28, cy + 62, color, 14);
+    } else if (pose === 'pikeBottom') {
+      s += lineSeg(cx - 2, cy + 2, cx - 28, cy + 18, color, 14) + lineSeg(cx + 2, cy + 2, cx + 28, cy + 18, color, 14);
+      s += lineSeg(cx - 8, cy + 25, cx - 28, cy + 62, color, 14) + lineSeg(cx + 8, cy + 25, cx + 28, cy + 62, color, 14);
+    } else if (pose === 'pistolTop') {
+      s += lineSeg(cx - 8, cy - 6, cx - 30, cy + 6, color, 14) + lineSeg(cx + 8, cy - 6, cx + 24, cy + 8, color, 14);
+      s += lineSeg(cx - 6, cy + 26, cx - 22, cy + 62, color, 14) + lineSeg(cx + 6, cy + 26, cx + 52, cy + 26, color, 14);
+    } else if (pose === 'pistolBottom') {
+      s += lineSeg(cx - 8, cy - 4, cx - 26, cy + 8, color, 14) + lineSeg(cx + 8, cy - 4, cx + 18, cy + 10, color, 14);
+      s += lineSeg(cx - 6, cy + 26, cx - 20, cy + 62, color, 14) + lineSeg(cx + 6, cy + 26, cx + 58, cy + 36, color, 14);
+    } else if (pose === 'raiseLow') {
+      s += lineSeg(cx - 10, cy - 8, cx - 28, cy - 50, color, 14) + lineSeg(cx + 10, cy - 8, cx + 28, cy - 50, color, 14);
+      s += lineSeg(cx - 8, cy + 25, cx - 18, cy + 62, color, 14) + lineSeg(cx + 8, cy + 25, cx + 18, cy + 62, color, 14);
+    } else if (pose === 'raiseHigh') {
+      s += lineSeg(cx - 10, cy - 8, cx - 28, cy - 50, color, 14) + lineSeg(cx + 10, cy - 8, cx + 28, cy - 50, color, 14);
+      s += lineSeg(cx - 8, cy + 26, cx - 38, cy + 12, color, 14) + lineSeg(cx + 8, cy + 26, cx + 38, cy + 12, color, 14);
+    } else if (pose === 'plankHigh') {
+      s += lineSeg(cx - 8, cy - 8, cx - 32, cy + 18, color, 14) + lineSeg(cx + 8, cy - 8, cx + 34, cy + 18, color, 14);
+      s += lineSeg(cx - 8, cy + 26, cx - 34, cy + 62, color, 14) + lineSeg(cx + 8, cy + 26, cx + 34, cy + 62, color, 14);
+    } else if (pose === 'plankLow') {
+      s += lineSeg(cx - 8, cy - 2, cx - 34, cy + 22, color, 14) + lineSeg(cx + 8, cy - 2, cx + 34, cy + 22, color, 14);
+      s += lineSeg(cx - 8, cy + 26, cx - 34, cy + 62, color, 14) + lineSeg(cx + 8, cy + 26, cx + 34, cy + 62, color, 14);
+    } else if (pose === 'bandRowStart') {
+      s += lineSeg(cx - 8, cy - 8, cx - 44, cy + 4, color, 14) + lineSeg(cx + 8, cy - 8, cx + 18, cy + 8, color, 14);
+      s += lineSeg(cx - 8, cy + 26, cx - 18, cy + 62, color, 14) + lineSeg(cx + 8, cy + 26, cx + 18, cy + 62, color, 14);
+    } else if (pose === 'bandRowFinish') {
+      s += lineSeg(cx - 8, cy - 8, cx - 24, cy - 6, color, 14) + lineSeg(cx + 8, cy - 8, cx + 20, cy + 8, color, 14);
+      s += lineSeg(cx - 8, cy + 26, cx - 18, cy + 62, color, 14) + lineSeg(cx + 8, cy + 26, cx + 18, cy + 62, color, 14);
+    } else if (pose === 'sidePlankA') {
+      s += lineSeg(cx - 10, cy - 8, cx + 20, cy - 8, color, 14) + lineSeg(cx + 8, cy + 26, cx + 38, cy + 26, color, 14) + lineSeg(cx - 10, cy + 26, cx - 28, cy + 62, color, 14);
+    } else if (pose === 'sidePlankB') {
+      s += lineSeg(cx - 10, cy - 8, cx + 22, cy - 24, color, 14) + lineSeg(cx + 8, cy + 26, cx + 38, cy + 26, color, 14) + lineSeg(cx - 10, cy + 26, cx - 28, cy + 62, color, 14);
+    } else if (pose === 'hollowA') {
+      s += lineSeg(cx - 10, cy - 8, cx - 36, cy - 16, color, 14) + lineSeg(cx + 8, cy + 26, cx + 38, cy + 34, color, 14) + lineSeg(cx - 8, cy + 26, cx - 30, cy + 40, color, 14);
+    } else if (pose === 'hollowB') {
+      s += lineSeg(cx - 10, cy - 8, cx - 40, cy - 30, color, 14) + lineSeg(cx + 8, cy + 26, cx + 44, cy + 16, color, 14) + lineSeg(cx - 8, cy + 26, cx - 34, cy + 12, color, 14);
+    } else if (pose === 'hsWall') {
+      s += lineSeg(cx - 10, cy - 8, cx - 24, cy - 52, color, 14) + lineSeg(cx + 10, cy - 8, cx + 24, cy - 52, color, 14);
+      s += lineSeg(cx - 8, cy + 26, cx - 18, cy + 64, color, 14) + lineSeg(cx + 8, cy + 26, cx + 18, cy + 64, color, 14);
+    } else if (pose === 'hsFree') {
+      s += lineSeg(cx - 10, cy - 8, cx - 28, cy - 54, color, 14) + lineSeg(cx + 10, cy - 8, cx + 24, cy - 48, color, 14);
+      s += lineSeg(cx - 8, cy + 26, cx - 18, cy + 64, color, 14) + lineSeg(cx + 8, cy + 26, cx + 18, cy + 64, color, 14);
+    } else {
+      s += lineSeg(cx - 8, cy - 8, cx - 28, cy + 8, color, 14) + lineSeg(cx + 8, cy - 8, cx + 28, cy + 8, color, 14);
+      s += lineSeg(cx - 8, cy + 26, cx - 18, cy + 62, color, 14) + lineSeg(cx + 8, cy + 26, cx + 18, cy + 62, color, 14);
+    }
+    return s;
+  };
+  const shellStart = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Übungsdarstellung"><rect width="' + W + '" height="' + H + '" rx="22" fill="' + bg + '" />';
+  const shellEnd = '</svg>';
 
   if (compact) {
     const icons = {
-      circles: `${head(42,40,6)}${ln(42,47,42,70,c,4)}<circle cx="42" cy="55" r="20" fill="none" stroke="${a}" stroke-width="3" stroke-dasharray="5 4"/>`,
-      pullapart: `${head(42,30,6)}${ln(42,37,42,70,c,4)}${ln(20,48,64,48,a,4)}${arrow(36,48,18,48)}${arrow(48,48,66,48)}`,
-      external: `${head(42,30,6)}${ln(42,37,42,70,c,4)}${ln(42,48,60,48,c,4)}${ln(60,48,60,67,a,4)}${arrow(60,64,73,54)}`,
-      scapPull: `${ln(18,18,66,18,b,4)}${head(42,38,6)}${ln(42,44,42,70,c,4)}${ln(42,48,24,22,c,4)}${ln(42,48,60,22,c,4)}${arrow(76,60,76,38)}`,
-      scapPush: `${ln(14,68,72,68,line,2)}${head(24,51,6)}${ln(30,54,56,60,c,4)}${ln(56,60,70,68,c,4)}${arrow(45,40,45,53)}`
+      circles: roundRect(8, 8, 68, 68, 16, panel2, '#1f3550') + circle(42, 33, 8, accent2) + '<path d="M42 22 C53 22 60 30 60 41 C60 52 51 60 40 60" fill="none" stroke="' + accent + '" stroke-width="6" stroke-linecap="round" />' + '<path d="M36 24 C25 24 18 33 18 43" fill="none" stroke="' + accent3 + '" stroke-width="6" stroke-linecap="round" />',
+      wrists: roundRect(8, 8, 68, 68, 16, panel2, '#1f3550') + pill(24, 42, 36, 10, accent2) + circle(30, 34, 8, accent) + circle(54, 34, 8, accent) + '<path d="M20 56 C28 50 32 47 40 47" fill="none" stroke="' + accent3 + '" stroke-width="5" stroke-linecap="round" />',
+      pullapart: roundRect(8, 8, 68, 68, 16, panel2, '#1f3550') + pill(18, 38, 48, 8, accent) + arrow(30, 42, 16, 42, accent2) + arrow(54, 42, 68, 42, accent2),
+      external: roundRect(8, 8, 68, 68, 16, panel2, '#1f3550') + circle(28, 28, 8, accent2) + pill(24, 36, 10, 26, accent2) + pill(32, 42, 22, 8, accent2) + arrow(48, 46, 62, 32, accent),
+      scapPull: roundRect(8, 8, 68, 68, 16, panel2, '#1f3550') + bar(16, 18, 36) + silhouette(34, 44, 'hang', accent2) + arrow(58, 56, 58, 36, accent),
+      scapPush: roundRect(8, 8, 68, 68, 16, panel2, '#1f3550') + ground(14, 58, 44) + silhouette(34, 42, 'plankLow', accent2) + arrow(56, 20, 56, 42, accent)
     };
-    return `<svg viewBox="0 0 84 84"><rect width="84" height="84" rx="14" fill="#071321"/>${icons[kind] || icons.circles}</svg>`;
+    return '<svg viewBox="0 0 84 84">' + (icons[kind] || icons.circles) + '</svg>';
   }
 
-  let s = base;
-  const floor = y => ln(15, y, 195, y, line, 2) + ln(225, y, 405, y, line, 2);
+  let svg = shellStart + roundRect(14, 16, 186, H - 30, 20, panel, '#17273a') + roundRect(220, 16, 186, H - 30, 20, panel, '#17273a') + label(26, 34, 'Start') + label(232, 34, 'Ziel');
+
+  const drawPair = (left, right, extras = '') => {
+    svg += left + right + extras;
+  };
+
   if (['pullup','pullupBand'].includes(kind)) {
-    s += ln(35,42,185,42,b,5)+ln(245,42,395,42,b,5);
-    s += head(110,82)+ln(110,91,110,135)+ln(110,100,72,48)+ln(110,100,148,48)+ln(110,135,90,180)+ln(110,135,130,180);
-    s += head(320,64)+ln(320,73,320,118)+ln(320,80,282,48)+ln(320,80,358,48)+ln(320,118,300,160)+ln(320,118,340,160)+arrow(387,150,387,72);
-    if (kind === 'pullupBand') s += `<path d="M110 135 C110 160 110 178 110 197" stroke="${a}" stroke-width="5" fill="none"/>${txt(126,184,'Band',a,11)}`;
+    drawPair(
+      bar(56, 58, 100) + silhouette(108, 120, 'hang') + svgText(108, 194, 'Aktiver Hang', muted, 11, 700, 'middle'),
+      bar(262, 58, 100) + silhouette(314, 102, 'top', accent) + arrow(385, 170, 385, 80) + svgText(314, 194, 'Kinn über Stange', muted, 11, 700, 'middle'),
+      kind === 'pullupBand' ? band(108, 148, 108, 188) + band(314, 130, 314, 188) + svgText(352, 34, 'Bandhilfe', accent, 10, 900, 'middle') : ''
+    );
   } else if (kind === 'dip') {
-    s += floor(190)+ln(62,82,62,188,b,4)+ln(158,82,158,188,b,4)+ln(272,82,272,188,b,4)+ln(368,82,368,188,b,4);
-    s += head(110,58)+ln(110,67,110,118)+ln(110,78,67,88)+ln(110,78,153,88)+ln(110,118,93,170)+ln(110,118,127,170);
-    s += head(320,82)+ln(320,91,320,138)+ln(320,105,276,90)+ln(320,105,364,90)+ln(320,138,302,180)+ln(320,138,338,180)+arrow(390,140,390,95);
+    drawPair(
+      rig(72, 84, 92) + rig(144, 84, 92) + silhouette(108, 94, 'dipTop') + ground(34, 186, 132),
+      rig(278, 84, 92) + rig(350, 84, 92) + silhouette(314, 112, 'dipBottom', accent) + ground(240, 186, 132) + arrow(388, 164, 388, 98)
+    );
   } else if (kind === 'row') {
-    s += ln(30,76,190,76,b,5)+ln(240,76,400,76,b,5)+floor(190);
-    s += head(72,112)+ln(82,116,145,157)+ln(145,157,183,184)+ln(82,116,68,82)+ln(82,116,110,82);
-    s += head(282,98)+ln(292,102,350,143)+ln(350,143,390,181)+ln(292,102,276,82)+ln(292,102,316,82)+arrow(385,122,350,102);
+    drawPair(
+      bar(50, 74, 116) + ground(34, 186, 142) + silhouette(98, 132, 'rowLow'),
+      bar(256, 74, 116) + ground(240, 186, 142) + silhouette(304, 118, 'rowHigh', accent) + arrow(374, 120, 338, 106)
+    );
   } else if (kind === 'split') {
-    s += floor(190)+`<rect x="146" y="130" width="45" height="12" rx="5" fill="${line}"/><rect x="356" y="130" width="45" height="12" rx="5" fill="${line}"/>`;
-    s += head(92,58)+ln(92,67,92,112)+ln(92,112,66,184)+ln(92,112,150,136)+ln(150,136,178,184)+ln(92,78,70,106)+ln(92,78,115,106);
-    s += head(300,82)+ln(300,91,300,132)+ln(300,132,275,184)+ln(300,132,360,136)+ln(360,136,388,184)+ln(300,102,278,125)+ln(300,102,322,125)+arrow(402,72,402,135);
+    drawPair(
+      ground(34, 186, 142) + roundRect(138, 135, 32, 12, 6, line, line) + silhouette(92, 96, 'splitTop'),
+      ground(240, 186, 142) + roundRect(344, 135, 32, 12, 6, line, line) + silhouette(298, 114, 'splitBottom', accent) + arrow(390, 76, 390, 136)
+    );
   } else if (kind === 'pike') {
-    s += floor(190);
-    s += head(65,146)+ln(74,150,115,120)+ln(115,120,150,70)+ln(150,70,184,188)+ln(74,150,42,186);
-    s += head(276,168)+ln(285,166,320,132)+ln(320,132,352,72)+ln(352,72,392,188)+ln(285,166,252,188)+arrow(388,45,337,113);
+    drawPair(
+      ground(34, 186, 142) + silhouette(98, 116, 'pikeTop'),
+      ground(240, 186, 142) + silhouette(304, 132, 'pikeBottom', accent) + arrow(387, 64, 348, 110)
+    );
   } else if (kind === 'pistol') {
-    s += floor(190);
-    s += head(104,58)+ln(104,67,104,118)+ln(104,118,82,188)+ln(104,118,176,124)+ln(104,80,72,106);
-    s += head(314,98)+ln(314,107,314,140)+ln(314,140,292,188)+ln(314,140,384,144)+ln(314,116,270,104)+arrow(398,72,398,132);
+    drawPair(
+      ground(34, 186, 142) + silhouette(92, 98, 'pistolTop'),
+      ground(240, 186, 142) + silhouette(298, 118, 'pistolBottom', accent) + arrow(390, 76, 390, 136)
+    );
   } else if (kind === 'kneeRaise') {
-    s += ln(35,42,185,42,b,5)+ln(245,42,395,42,b,5);
-    s += head(110,76)+ln(110,85,110,135)+ln(110,92,72,48)+ln(110,92,148,48)+ln(110,135,95,180)+ln(110,135,125,180);
-    s += head(320,76)+ln(320,85,320,132)+ln(320,92,282,48)+ln(320,92,358,48)+ln(320,132,288,142)+ln(288,142,266,120)+ln(320,132,350,142)+ln(350,142,372,120)+arrow(392,165,365,132);
+    drawPair(
+      bar(56, 58, 100) + silhouette(108, 120, 'raiseLow'),
+      bar(262, 58, 100) + silhouette(314, 120, 'raiseHigh', accent) + arrow(390, 170, 352, 128)
+    );
   } else if (kind === 'hang') {
-    s += ln(35,42,185,42,b,5)+ln(245,42,395,42,b,5);
-    s += head(110,80)+ln(110,89,110,138)+ln(110,96,72,48)+ln(110,96,148,48)+ln(110,138,90,184)+ln(110,138,130,184);
-    s += head(320,80)+ln(320,89,320,138)+ln(320,96,282,48)+ln(320,96,358,48)+ln(320,138,300,184)+ln(320,138,340,184)+txt(270,199,'30–45 s ruhig halten',a,11);
+    drawPair(
+      bar(56, 58, 100) + silhouette(108, 120, 'hang') + svgText(108, 194, 'Grip ruhig halten', muted, 11, 700, 'middle'),
+      bar(262, 58, 100) + silhouette(314, 120, 'hang', accent) + svgText(314, 194, '30–45 s', accent, 12, 900, 'middle')
+    );
   } else if (kind === 'pushup') {
-    s += floor(190);
-    s += head(50,120)+ln(60,124,132,145)+ln(132,145,182,182)+ln(60,124,38,184)+ln(68,128,85,184);
-    s += head(260,152)+ln(270,154,338,164)+ln(338,164,392,184)+ln(270,154,248,184)+ln(278,155,296,184)+arrow(394,98,368,150);
+    drawPair(
+      ground(34, 186, 142) + silhouette(98, 116, 'plankHigh'),
+      ground(240, 186, 142) + silhouette(304, 136, 'plankLow', accent) + arrow(390, 92, 362, 142)
+    );
   } else if (kind === 'bandRow') {
-    s += floor(190)+ln(30,55,30,185,b,5)+ln(240,55,240,185,b,5);
-    s += head(128,72)+ln(128,81,128,132)+ln(128,95,38,92,a,4)+ln(128,132,105,184)+ln(128,132,150,184);
-    s += head(338,72)+ln(338,81,338,132)+ln(338,95,248,92,a,4)+ln(338,95,300,102,c,5)+ln(338,132,315,184)+ln(338,132,360,184)+arrow(260,58,300,94);
+    drawPair(
+      rig(40, 60, 120) + silhouette(112, 102, 'bandRowStart') + band(42, 92, 68, 92),
+      rig(246, 60, 120) + silhouette(318, 100, 'bandRowFinish', accent) + band(248, 92, 294, 92) + arrow(268, 58, 304, 82)
+    );
   } else if (kind === 'facePull') {
-    s += floor(190)+ln(30,58,30,185,b,5)+ln(240,58,240,185,b,5);
-    s += head(125,76)+ln(125,85,125,135)+ln(125,102,38,92,a,4)+ln(125,135,105,184)+ln(125,135,145,184);
-    s += head(335,76)+ln(335,85,335,135)+ln(335,101,248,92,a,4)+ln(335,101,305,82,c,5)+ln(335,101,305,118,c,5)+ln(335,135,315,184)+ln(335,135,355,184)+arrow(268,62,306,86);
+    drawPair(
+      rig(40, 60, 120) + silhouette(112, 100, 'bandRowStart') + band(42, 92, 68, 92),
+      rig(246, 60, 120) + silhouette(318, 96, 'bandRowFinish', accent) + band(248, 92, 304, 92) + arrow(266, 60, 296, 82)
+    );
   } else if (kind === 'sidePlank') {
-    s += floor(190);
-    s += head(55,130)+ln(66,134,126,150)+ln(126,150,184,184)+ln(70,138,52,184)+ln(94,142,92,100);
-    s += head(265,126)+ln(276,130,337,147)+ln(337,147,394,184)+ln(280,135,260,184)+ln(305,139,304,92)+arrow(392,98,392,142);
+    drawPair(
+      ground(34, 186, 142) + silhouette(96, 124, 'sidePlankA'),
+      ground(240, 186, 142) + silhouette(302, 124, 'sidePlankB', accent) + arrow(390, 104, 390, 136)
+    );
   } else if (kind === 'hollow') {
-    s += floor(190);
-    s += head(50,160)+ln(60,164,112,170)+ln(112,170,175,181)+ln(60,164,25,146);
-    s += head(260,158)+ln(270,162,322,160)+ln(322,160,393,138)+ln(270,162,238,136)+arrow(392,105,366,134);
+    drawPair(
+      ground(34, 186, 142) + silhouette(102, 142, 'hollowA'),
+      ground(240, 186, 142) + silhouette(308, 138, 'hollowB', accent) + arrow(390, 96, 360, 122)
+    );
   } else if (kind === 'handstand') {
-    s += floor(190);
-    s += head(110,145)+ln(110,136,110,92)+ln(110,92,92,40)+ln(110,92,128,40)+ln(110,136,82,184)+ln(110,136,138,184)+txt(55,200,'Chest-to-wall',muted,10);
-    s += head(320,145)+ln(320,136,320,90)+ln(320,90,300,38)+ln(320,90,340,38)+ln(320,136,294,184)+ln(320,136,346,184)+arrow(390,160,390,95)+txt(270,200,'frei balancieren',muted,10);
+    drawPair(
+      ground(34, 186, 142) + lineSeg(160, 42, 160, 186, line, 4) + silhouette(102, 132, 'hsWall') + svgText(102, 194, 'Chest-to-wall', muted, 11, 700, 'middle'),
+      ground(240, 186, 142) + silhouette(314, 132, 'hsFree', accent) + arrow(390, 166, 390, 96) + svgText(314, 194, 'frei balancieren', muted, 11, 700, 'middle')
+    );
   } else {
-    s += floor(190)+head(105,70)+ln(105,79,105,130)+ln(105,95,65,115)+ln(105,95,145,115)+ln(105,130,82,184)+ln(105,130,128,184)+head(315,70)+ln(315,79,315,130)+ln(315,95,275,115)+ln(315,95,355,115)+ln(315,130,292,184)+ln(315,130,338,184);
+    drawPair(
+      ground(34, 186, 142) + silhouette(98, 104, 'stand'),
+      ground(240, 186, 142) + silhouette(304, 104, 'stand', accent)
+    );
   }
-  return s + end;
+  return svg + shellEnd;
 }
 
 function targetText(item) {
@@ -652,7 +760,7 @@ function startGuided(key) {
     key, date: localDateKey(), template: workoutTemplate(key, localDateKey()), itemIndex: 0, setIndex: 0,
     logs: {}, startedAt: new Date().toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit', second:'2-digit' }), completed: false
   };
-  state.activeSession = { key, date: guided.date, itemIndex: 0, setIndex: 0, logs: {} };
+  state.activeSession = { key, date: guided.date, itemIndex: 0, setIndex: 0, logs: {}, startedAt: guided.startedAt };
   saveState(false);
   renderTrainingOverview();
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -744,7 +852,7 @@ function saveGuidedSet(item) {
 }
 
 function persistActive() {
-  state.activeSession = { key: guided.key, date: guided.date, itemIndex: guided.itemIndex, setIndex: guided.setIndex, logs: guided.logs };
+  state.activeSession = { key: guided.key, date: guided.date, itemIndex: guided.itemIndex, setIndex: guided.setIndex, logs: guided.logs, startedAt: guided.startedAt };
   localStorage.setItem(STORE_KEY, JSON.stringify(state));
 }
 
@@ -752,9 +860,13 @@ function completeGuidedSession() {
   const session = {
     date: guided.date, key: guided.key, completed: true, logs: guided.logs, startedAt: guided.startedAt,
     finishedAt: new Date().toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit', second:'2-digit' }),
-    legChoice: guided.template.legChoice || null
+    legChoice: guided.template.legChoice || null,
+    id: Date.now()
   };
-  state.workouts[guided.date] = session;
+  const existing = state.workouts[guided.date];
+  if (!existing) state.workouts[guided.date] = session;
+  else if (Array.isArray(existing)) existing.push(session);
+  else state.workouts[guided.date] = [existing, session];
   if (guided.logs.handstand?.done) state.handstandPractice[guided.date] = true;
   delete state.activeSession;
   guided.completed = true;
@@ -982,8 +1094,33 @@ function renderCreatineStreak() {
 function renderAllDerived() {
   renderDashboard(); renderMeals(); renderVacation(); renderStats(); renderSkills(); renderRoadmap(); renderPhotos();
 }
+function restoreActiveSession() {
+  if (!state.activeSession) return false;
+  const a = state.activeSession;
+  guided = {
+    key: a.key,
+    date: a.date || localDateKey(),
+    template: workoutTemplate(a.key, a.date || localDateKey()),
+    itemIndex: a.itemIndex || 0,
+    setIndex: a.setIndex || 0,
+    logs: a.logs || {},
+    startedAt: a.startedAt || new Date().toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit', second:'2-digit' }),
+    completed: false
+  };
+  selectedWorkout = a.key || selectedWorkout;
+  return true;
+}
+
 function renderAll() {
-  loadDailyForm(); renderWorkoutTabs(); renderTrainingOverview(); renderMealPresets(); renderAllDerived(); updateOnline();
+  const todayPlan = planForDate();
+  if (!state.activeSession && todayPlan.type === 'workout') selectedWorkout = todayPlan.workout;
+  restoreActiveSession();
+  loadDailyForm();
+  renderWorkoutTabs();
+  renderTrainingOverview();
+  renderMealPresets();
+  renderAllDerived();
+  updateOnline();
 }
 
 function switchView(id) {

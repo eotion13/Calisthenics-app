@@ -1,7 +1,7 @@
 {
-  "name": "Calisthenics Coach V2.1",
+  "name": "Calisthenics Coach V2.2",
   "short_name": "Cal Coach",
-  "description": "Persönlicher Calisthenics Coach für Training, Ernährung, Skills und Statistik.",
+  "description": "Persönlicher Calisthenics Coach für Training, Ernährung und Statistik.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
