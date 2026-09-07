@@ -1,7 +1,7 @@
 'use strict';
 
 const STORE_KEY = 'calisthenicsCoach_v2'; // bewusst gleich: V2-Daten bleiben erhalten
-const VERSION = '4.0.0';
+const VERSION = '4.1.0';
 
 const pad = n => String(n).padStart(2, '0');
 const localDateKey = (date = new Date()) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
@@ -326,6 +326,111 @@ function workoutDoneThisWeek(workoutKey, key = localDateKey()) { return weekSess
 function weekendDone(key = localDateKey()) { return workoutDoneThisWeek('C', key); }
 function workoutDoneDate(key, workoutKey) {
   return sessions().some(s => s.date === key && (!workoutKey || s.key === workoutKey));
+}
+
+
+function previousExerciseLog(exerciseId, workoutKey = null) {
+  const all = sessions().slice().sort((a,b) => {
+    const ak = `${a.date}-${a.finishedAt || ''}-${a.id || 0}`;
+    const bk = `${b.date}-${b.finishedAt || ''}-${b.id || 0}`;
+    return bk.localeCompare(ak);
+  });
+  const sameWorkout = workoutKey ? all.find(s => s.key === workoutKey && s.logs?.[exerciseId]?.sets?.length) : null;
+  const found = sameWorkout || all.find(s => s.logs?.[exerciseId]?.sets?.length);
+  return found ? { session: found, log: found.logs[exerciseId] } : null;
+}
+
+function setDisplay(set, item) {
+  if (!set) return '–';
+  let txt = `${set.value}${item?.unit === 's' ? ' s' : ' Wdh.'}`;
+  if (set.load != null) {
+    if (item?.loadType === 'band') txt += set.load === 0 ? ' · ohne Band' : ` · ${set.load} kg Hilfe`;
+    else txt += ` · ${set.load} kg`;
+  }
+  if (set.rir != null) txt += ` · RIR ${set.rir}`;
+  return txt;
+}
+
+function compareSet(current, previous, item) {
+  if (!current || !previous) return { cls:'', text:'neu' };
+  let score = (+current.value || 0) - (+previous.value || 0);
+  let text = score > 0 ? `▲ +${fmt(score,0)}` : score < 0 ? `▼ ${fmt(score,0)}` : '= gleich';
+  let cls = score > 0 ? 'better' : score < 0 ? 'worse' : 'same';
+  if (item?.loadType === 'band' && current.load != null && previous.load != null) {
+    if (+current.load < +previous.load) { cls='better'; text='▲ weniger Hilfe'; }
+    else if (+current.load > +previous.load) { cls='worse'; text='▼ mehr Hilfe'; }
+    else if (score === 0) { cls='same'; text='= gleich'; }
+  } else if (item?.loadType === 'resistance' && current.load != null && previous.load != null) {
+    if (+current.load > +previous.load && +current.value >= +previous.value) { cls='better'; text='▲ schwerer'; }
+    else if (+current.load < +previous.load) { cls='worse'; text='▼ leichter'; }
+  }
+  return { cls, text };
+}
+
+function renderLastTimeBox(item) {
+  if (item.special) return '';
+  const prev = previousExerciseLog(item.id, guided?.key);
+  if (!prev) return `<div class="last-time-box empty"><span>Letztes Mal</span><b>Noch kein Vergleich</b><small>Ab dem nächsten Training siehst du hier deine alten Werte.</small></div>`;
+  const sets = prev.log.sets || [];
+  return `<div class="last-time-box"><div class="last-time-head"><span>Letztes Mal · ${deDate(prev.session.date)}</span><b>${workoutTemplate(prev.session.key, prev.session.date).label}</b></div><div class="last-time-sets">${sets.map((s,i)=>`<span><small>S${i+1}</small><b>${setDisplay(s,item)}</b></span>`).join('')}</div></div>`;
+}
+
+function showPerformanceToast(item, entry, setIndex) {
+  const prev=previousExerciseLog(item.id,guided?.key); const previous=prev?.log?.sets?.[setIndex];
+  const cmp=compareSet(entry,previous,item);
+  document.getElementById('performanceToast')?.remove();
+  const el=document.createElement('div'); el.id='performanceToast'; el.className=`performance-toast ${cmp.cls}`;
+  el.innerHTML=previous?`<b>${cmp.text}</b><span>vs. letztes Mal · Satz ${setIndex+1}</span>`:`<b>Erster Vergleichswert gespeichert</b><span>Beim nächsten Training wird er hier verglichen.</span>`;
+  document.body.appendChild(el); setTimeout(()=>el.classList.add('show'),20); setTimeout(()=>{el.classList.remove('show');setTimeout(()=>el.remove(),220)},1800);
+}
+
+function openSetEditor(exerciseId, setIndex) {
+  if (!guided) return;
+  const item = guided.template.items.find(x => x.id === exerciseId);
+  const set = guided.logs?.[exerciseId]?.sets?.[setIndex];
+  if (!item || !set) return;
+  document.getElementById('setEditOverlay')?.remove();
+  const loadField = item.loadType === 'band'
+    ? `<label>Band-Hilfe<select id="editSetLoad"><option value="30" ${+set.load===30?'selected':''}>30 kg Hilfe</option><option value="20" ${+set.load===20?'selected':''}>20 kg Hilfe</option><option value="10" ${+set.load===10?'selected':''}>10 kg Hilfe</option><option value="0" ${+set.load===0?'selected':''}>ohne Band</option></select></label>`
+    : item.loadType === 'resistance'
+      ? `<label>Widerstand<select id="editSetLoad"><option value="10" ${+set.load===10?'selected':''}>10 kg</option><option value="20" ${+set.load===20?'selected':''}>20 kg</option><option value="30" ${+set.load===30?'selected':''}>30 kg</option></select></label>` : '';
+  const rirField = item.unit === 'reps' ? `<label>RIR<select id="editSetRir"><option value="3" ${+set.rir===3?'selected':''}>3</option><option value="2" ${+set.rir===2?'selected':''}>2</option><option value="1" ${+set.rir===1?'selected':''}>1</option><option value="0" ${+set.rir===0?'selected':''}>0</option></select></label>` : '';
+  const overlay = document.createElement('div');
+  overlay.id='setEditOverlay'; overlay.className='set-edit-overlay';
+  overlay.innerHTML=`<div class="set-edit-card"><div class="card-head"><div><div class="eyebrow">Eintrag bearbeiten</div><h3>${EX[exerciseId]?.name || exerciseId} · Satz ${setIndex+1}</h3></div><button id="closeSetEditor" class="small-btn" type="button">×</button></div><div class="set-edit-grid"><label>${item.unit==='s'?'Sekunden':'Wiederholungen'}<input id="editSetValue" type="number" min="0" step="1" inputmode="numeric" value="${set.value}"></label>${loadField}${rirField}</div><div class="set-edit-actions"><button id="deleteSetEntry" class="danger-btn" type="button">Satz löschen</button><button id="saveSetEdit" class="primary" type="button">Änderung speichern</button></div></div>`;
+  document.body.appendChild(overlay);
+  document.getElementById('closeSetEditor').onclick=()=>overlay.remove();
+  document.getElementById('saveSetEdit').onclick=()=>{
+    const value=+document.getElementById('editSetValue').value; if(!Number.isFinite(value)||value<=0)return;
+    set.value=value;
+    if(['band','resistance'].includes(item.loadType)) set.load=+document.getElementById('editSetLoad').value;
+    if(item.unit==='reps') set.rir=+document.getElementById('editSetRir').value;
+    guided.setIndex=(guided.logs[exerciseId].sets||[]).length; persistActive(); overlay.remove(); renderGuided();
+  };
+  document.getElementById('deleteSetEntry').onclick=()=>{
+    if(!confirm(`Satz ${setIndex+1} wirklich löschen?`))return;
+    guided.logs[exerciseId].sets.splice(setIndex,1);
+    guided.setIndex=guided.logs[exerciseId].sets.length; persistActive(); overlay.remove(); renderGuided();
+  };
+}
+
+function renderTrainingHistory() {
+  const root=document.getElementById('trainingHistory'); const count=document.getElementById('trainingHistoryCount');
+  if(!root||!count)return;
+  const list=sessions().slice().sort((a,b)=>`${b.date}-${b.finishedAt||''}-${b.id||0}`.localeCompare(`${a.date}-${a.finishedAt||''}-${a.id||0}`)).slice(0,20);
+  count.textContent=String(list.length);
+  if(!list.length){root.innerHTML='<p class="muted">Noch kein abgeschlossenes Training. Deine erste Einheit erscheint danach automatisch hier.</p>';return;}
+  root.innerHTML=list.map(s=>{
+    const wt=workoutTemplate(s.key,s.date); const entries=wt.items.filter(item=>s.logs?.[item.id]);
+    return `<details class="history-session"><summary><span><b>${deDateLong(s.date)}</b><small>${wt.label}${s.startedAt?` · ${s.startedAt}`:''}</small></span><span class="history-chevron">›</span></summary><div class="history-exercises">${entries.map(item=>{const log=s.logs[item.id]; if(item.special)return `<div class="history-exercise"><b>${EX[item.id].name}</b><span>erledigt ✓</span></div>`; return `<div class="history-exercise"><b>${EX[item.id].name}</b><div class="history-set-list">${(log.sets||[]).map((set,i)=>`<span>S${i+1}: ${setDisplay(set,item)}</span>`).join('')}</div></div>`}).join('')}</div><div class="history-actions"><button class="small-btn danger" data-delete-workout="${s.id||''}" data-delete-date="${s.date}" type="button">Training löschen</button></div></details>`;
+  }).join('');
+  root.querySelectorAll('[data-delete-workout]').forEach(btn=>btn.onclick=e=>{
+    e.preventDefault(); e.stopPropagation(); if(!confirm('Dieses absolvierte Training wirklich löschen?'))return;
+    const date=btn.dataset.deleteDate,id=btn.dataset.deleteWorkout; const val=state.workouts[date];
+    if(Array.isArray(val)){const next=val.filter(x=>String(x.id||'')!==String(id)); if(next.length)state.workouts[date]=next;else delete state.workouts[date];}
+    else if(!id||String(val?.id||'')===String(id)) delete state.workouts[date];
+    saveState(); renderTrainingHistory(); renderTrainingOverview();
+  });
 }
 
 function planForDate(key = localDateKey()) {
@@ -857,8 +962,9 @@ function renderGuided() {
   const root = document.getElementById('guidedCoach');
   const wt = guided.template;
   if (guided.completed) {
-    root.innerHTML = `<div class="guided-shell"><article class="card done-screen"><div class="big-check">✓</div><div class="eyebrow">Training gespeichert</div><h2>${wt.label} erledigt</h2><p class="muted">Nicht mehr nachdenken. Essen, Schlaf und die nächste Session führt die App weiter.</p><button id="finishCoachBtn" class="primary full" type="button">Zur Startseite</button></article></div>`;
+    root.innerHTML = `<div class="guided-shell"><article class="card done-screen"><div class="big-check">✓</div><div class="eyebrow">Training gespeichert</div><h2>${wt.label} erledigt</h2><p class="muted">Die komplette Einheit findest du jetzt unter „Vergangene Trainings“.</p><div class="action-row"><button id="viewCompletedWorkout" class="secondary" type="button">Training ansehen</button><button id="finishCoachBtn" class="primary" type="button">Zur Startseite</button></div></article></div>`;
     document.getElementById('finishCoachBtn').onclick = () => { guided = null; selectedWorkout = wt.short === 'Mo' ? 'A' : selectedWorkout; switchView('today'); renderTrainingOverview(); };
+    document.getElementById('viewCompletedWorkout').onclick = () => { guided=null; renderTrainingOverview(); renderTrainingHistory(); setTimeout(()=>document.getElementById('trainingHistoryCard')?.scrollIntoView({behavior:'smooth'}),80); };
     return;
   }
   const item = wt.items[guided.itemIndex];
@@ -875,7 +981,10 @@ function renderGuided() {
       <div class="action-row"><button id="skillTimerBtn" class="secondary" type="button">${item.minutes}-Min-Timer starten</button><button id="specialDone" class="primary" type="button">Handstand erledigt → Weiter</button></div>`;
   } else {
     const unitLabel = item.unit === 's' ? 'Sekunden' : 'Wiederholungen';
-    const setNo = guided.setIndex + 1;
+    const prev = previousExerciseLog(item.id, guided.key);
+    const completedSets=currentLog.sets.length;
+    const exerciseComplete=completedSets>=item.sets;
+    const setNo=Math.min(completedSets+1,item.sets);
     const bandRec = bandRecommendation().band;
     const loadField = item.loadType === 'band'
       ? `<label>Band-Hilfe<select id="setLoad"><option value="30" ${bandRec===30?'selected':''}>30 kg Hilfe</option><option value="20" ${bandRec===20?'selected':''}>20 kg Hilfe</option><option value="10" ${bandRec===10?'selected':''}>10 kg Hilfe</option><option value="0" ${bandRec===0?'selected':''}>ohne Band</option></select></label>`
@@ -883,12 +992,17 @@ function renderGuided() {
         ? `<label>Band-Widerstand<select id="setLoad"><option value="10" selected>10 kg</option><option value="20">20 kg</option><option value="30">30 kg</option></select></label>` : '';
     const rirField = item.unit === 'reps'
       ? `<label>RIR<select id="setRir"><option value="3">3</option><option value="2" selected>2</option><option value="1">1</option><option value="0">0</option></select></label>` : '';
-    body = `<div class="target-box"><span>Satz ${setNo} von ${item.sets}</span><strong>${item.min}–${item.max} ${item.unit === 's' ? 's' : 'Wdh.'}</strong></div>
+    const history = currentLog.sets.map((s,i)=>{const cmp=compareSet(s,prev?.log?.sets?.[i],item);return `<button type="button" class="set-chip editable" data-edit-set="${i}"><span>S${i+1}: ${setDisplay(s,item)}</span><small class="compare ${cmp.cls}">${cmp.text}</small><i>Bearbeiten</i></button>`}).join('');
+    body = `${renderLastTimeBox(item)}
+      <div class="target-box"><span>${exerciseComplete?'Übung abgeschlossen':`Satz ${setNo} von ${item.sets}`}</span><strong>${item.min}–${item.max} ${item.unit === 's' ? 's' : 'Wdh.'}</strong></div>
       ${item.progressGoal ? `<p class="coach-tip">${item.progressGoal}</p>` : ''}
-      <div class="set-history">${currentLog.sets.map((s,i) => `<span class="set-chip">S${i+1}: ${s.value}${item.unit==='s'?'s':''}${s.load!=null?` · ${s.load===0?'ohne Band':s.load+'kg'}`:''}${s.rir!=null?` · RIR ${s.rir}`:''}</span>`).join('')}</div>
-      <div class="set-entry"><label>${unitLabel}<input id="setValue" type="number" min="0" step="1" inputmode="numeric" autofocus placeholder="Ergebnis"></label>${loadField}${rirField}</div>
-      ${item.unit === 'reps' ? '<div class="rir-help"><b>RIR = Reps in Reserve.</b> RIR 2 bedeutet: Du hättest noch ungefähr 2 saubere Wiederholungen geschafft. Dein Standardziel ist 1–2.</div>' : ''}
-      <button id="saveSetBtn" class="primary full" type="button">Satz speichern${guided.setIndex + 1 < item.sets ? ' · dann Pause' : ' · Übung abschließen'}</button>`;
+      ${history?`<div class="eyebrow set-label">Heute · tippen zum Ändern</div><div class="set-history">${history}</div>`:''}
+      ${exerciseComplete
+        ? `<div class="coach-tip success-tip">Alle ${item.sets} Sätze sind gespeichert. Du kannst oben jeden Satz antippen und ändern oder löschen.</div><button id="nextExerciseBtn" class="primary full" type="button">Weiter zur nächsten Übung</button>`
+        : `<div class="set-entry"><label>${unitLabel}<input id="setValue" type="number" min="0" step="1" inputmode="numeric" autofocus placeholder="Ergebnis"></label>${loadField}${rirField}</div>
+          ${prev?.log?.sets?.[completedSets] ? `<div class="next-compare"><span>Dieser Satz letztes Mal</span><b>${setDisplay(prev.log.sets[completedSets],item)}</b></div>` : ''}
+          ${item.unit === 'reps' ? '<div class="rir-help"><b>RIR = Reps in Reserve.</b> RIR 2 bedeutet: Du hättest noch ungefähr 2 saubere Wiederholungen geschafft.</div>' : ''}
+          <button id="saveSetBtn" class="primary full" type="button">Satz speichern${completedSets + 1 < item.sets ? ' · dann Pause' : ' · Übung abschließen'}</button>`}`;
   }
 
   root.innerHTML = `<div class="guided-shell">
@@ -898,16 +1012,23 @@ function renderGuided() {
       <div class="coach-visual">${visualHTML(ex.visual, false, ex.name)}</div>
       <ul class="cue-list">${ex.cues.map(x => `<li>${x}</li>`).join('')}</ul>
       ${body}
-      <div class="coach-nav"><button id="cancelCoach" class="ghost-btn" type="button">Beenden</button>${guided.itemIndex > 0 ? '<button id="prevExercise" class="ghost-btn" type="button">Zurück</button>' : ''}</div>
+      <div class="coach-nav">${guided.itemIndex > 0 ? '<button id="prevExercise" class="secondary" type="button">← Zurück</button>' : ''}<button id="cancelCoach" class="ghost-btn" type="button">Training verlassen</button></div>
     </article>
   </div>`;
 
   document.getElementById('cancelCoach').onclick = () => {
-    if (confirm('Training wirklich beenden? Bisherige Sätze bleiben nicht als abgeschlossenes Workout gespeichert.')) {
-      guided = null; delete state.activeSession; saveState(false); renderTrainingOverview();
+    if (confirm('Training verlassen? Deine bisher eingetragenen Sätze bleiben gespeichert und du kannst später genau hier weitermachen.')) {
+      persistActive(); guided = null; renderTrainingOverview();
     }
   };
-  document.getElementById('prevExercise')?.addEventListener('click', () => { guided.itemIndex = Math.max(0, guided.itemIndex - 1); guided.setIndex = 0; renderGuided(); });
+  document.getElementById('prevExercise')?.addEventListener('click', () => {
+    guided.itemIndex = Math.max(0, guided.itemIndex - 1);
+    const prevItem=guided.template.items[guided.itemIndex];
+    guided.setIndex=(guided.logs?.[prevItem.id]?.sets||[]).length;
+    persistActive(); renderGuided();
+  });
+  document.getElementById('nextExerciseBtn')?.addEventListener('click',()=>{guided.itemIndex++;guided.setIndex=0;persistActive();renderGuided();});
+  root.querySelectorAll('[data-edit-set]').forEach(btn=>btn.onclick=()=>openSetEditor(item.id,+btn.dataset.editSet));
   document.getElementById('specialDone')?.addEventListener('click', () => {
     guided.logs[item.id] = { done: true, sets: [] };
     if (item.id === 'handstand') state.handstandPractice[guided.date] = true;
@@ -924,16 +1045,17 @@ function renderGuided() {
 
 function saveGuidedSet(item) {
   const valueEl = document.getElementById('setValue'); const value = +valueEl.value;
-  if (!Number.isFinite(value) || value <= 0) { valueEl.focus(); return; }
+  if (!Number.isFinite(value) || value <= 0) { valueEl?.focus(); return; }
   guided.logs[item.id] ||= { sets: [] };
   const entry = { value };
   if (['band','resistance'].includes(item.loadType)) entry.load = +document.getElementById('setLoad').value;
   if (item.unit === 'reps') entry.rir = +document.getElementById('setRir').value;
   guided.logs[item.id].sets.push(entry);
-  const moreSets = guided.setIndex + 1 < item.sets;
-  if (moreSets) {
-    guided.setIndex++;
-    persistActive();
+  const count=guided.logs[item.id].sets.length;
+  showPerformanceToast(item,entry,count-1);
+  guided.setIndex=count;
+  persistActive();
+  if (count < item.sets) {
     openTimer(item.rest || 90, `${EX[item.id].name} · Pause`, () => renderGuided(), true);
   } else {
     guided.itemIndex++; guided.setIndex = 0; persistActive(); renderGuided();
@@ -1365,7 +1487,7 @@ function renderCreatineStreak() {
 }
 
 function renderAllDerived() {
-  renderDashboard(); renderMeals(); renderVacation(); renderStats(); renderSkills(); renderRoadmap(); renderPhotos(); renderProfileSettings();
+  renderDashboard(); renderMeals(); renderVacation(); renderStats(); renderSkills(); renderRoadmap(); renderPhotos(); renderProfileSettings(); renderTrainingHistory();
 }
 function restoreActiveSession() {
   if (!state.activeSession) return false;
@@ -1403,7 +1525,7 @@ function switchView(id, skipGuard=false) {
   document.querySelectorAll('[data-view]').forEach(v=>v.classList.toggle('active',v.id===id));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.target===id));
   if(id==='stats') setTimeout(()=>{renderStats();drawCharts();},30);
-  if(id==='train'){renderWorkoutTabs();renderTrainingOverview();}
+  if(id==='train'){renderWorkoutTabs();renderTrainingOverview();renderTrainingHistory();}
   window.scrollTo({top:0,behavior:'smooth'});
 }
 document.querySelectorAll('.nav-btn').forEach(btn=>btn.onclick=()=>switchView(btn.dataset.target));
@@ -1419,7 +1541,7 @@ async function exportBackup() {
   try{photoBlobs=await photoGetAll();}catch(e){console.warn('Fotos konnten nicht ins Backup aufgenommen werden',e);}
   const backup={...state,photoBlobs};
   const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}),a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);a.download=`calisthenics-coach-v4-guided-${localDateKey()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  a.href=URL.createObjectURL(blob);a.download=`calisthenics-coach-v4.1-guided-${localDateKey()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 document.getElementById('exportBtn').onclick=exportBackup;
 document.getElementById('importFile').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;try{const raw=JSON.parse(await f.text());const blobs=Array.isArray(raw.photoBlobs)?raw.photoBlobs:[];delete raw.photoBlobs;state=migrate(raw);for(const rec of blobs){try{await photoPut(rec);}catch(err){console.warn(err);}}saveState();renderAll();alert('Backup importiert ✓');}catch(err){console.error(err);alert('Backup konnte nicht gelesen werden.');}};

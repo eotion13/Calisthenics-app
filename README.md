@@ -1,20 +1,17 @@
-# Calisthenics Coach V4 Guided
+# Calisthenics Coach V4.1 Guided
 
-V4 macht die App konsequent geführt.
+Geführte PWA mit Onboarding, Tagescheck, Satz-für-Satz-Training, Food Tracker und Statistik.
 
-## Neue Nutzer
+## Neu in V4.1
 
-Auf einem neuen Gerät/Browser startet zuerst ein persönliches Onboarding. Abgefragt werden Basisdaten, Ziel, aktuelles Kraftniveau, Trainingshäufigkeit, Bänder, Alltag/Schlaf und Ernährung. Daraus werden Startwerte für Kalorien und Protein berechnet.
-
-Jeder Browser speichert sein eigenes Profil lokal. Wenn du den GitHub-Pages-Link teilst, sieht die andere Person **nicht deine Daten**, sondern startet mit einem neuen Profil.
-
-## Täglicher Ablauf
-
-1. Tagescheck: Schlaf → Energie → Ellenbogen → Schulter → Gewicht/Creatin
-2. automatische Recovery-Einstufung: NORMAL / LIGHT / REDUCED / STOP
-3. Training geführt, Satz für Satz, oder Tagesplan/Regeneration
-4. Essen geführt: Lebensmittel → Menge → automatische Makros → direkte Empfehlung
+- im laufenden Training **zurück zu vorherigen Übungen**
+- bereits eingetragene Sätze **antippen, ändern oder löschen**
+- Training beim Verlassen **nicht verlieren**, sondern später fortsetzen
+- pro Übung direkt **„Letztes Mal“** mit allen Satzwerten anzeigen
+- jeder neue Satz zeigt direkt **besser / gleich / schlechter** zum entsprechenden Satz des letzten Trainings
+- **Vergangene Trainings** im Training-Tab mit allen Übungen und Sätzen einsehbar
+- absolvierte Trainings können bei Bedarf gelöscht werden
 
 ## GitHub Pages
 
-Alle Dateien und Ordner direkt in den Root des Repositories hochladen. Bestehende lokale Daten der bisherigen App bleiben auf demselben Gerät erhalten.
+Den kompletten Inhalt dieser ZIP direkt in den Root des GitHub-Repositories hochladen. `index.html` muss direkt im Hauptordner liegen.
