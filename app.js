@@ -1,7 +1,7 @@
 'use strict';
 
 const STORE_KEY = 'calisthenicsCoach_v2'; // bewusst gleich: V2-Daten bleiben erhalten
-const VERSION = '4.2.2';
+const VERSION = '4.3.0';
 const GEMINI_KEY_STORE = 'calisthenicsCoach_geminiKey_v1';
 const GEMINI_MODEL = 'gemini-3.5-flash-lite';
 
@@ -34,8 +34,9 @@ const defaultState = {
     diet: { halal: false, lactoseFree: false, vegetarian: false },
     goal: 'Kraft → Muskeln → Skills'
   },
-  settings: { calories: 2200, protein: 150, carbs: 235, fat: 65, fiber: 30, creatine: 5, vacation: false },
+  settings: { calories: 2200, protein: 150, carbs: 235, fat: 65, fiber: 30, creatine: 5, vacation: false, aiAutoDaily: true, aiAutoTraining: true, aiAutoFood: true },
   daily: {}, meals: {}, workouts: {}, handstandPractice: {}, runs: {},
+  ai: { daily: {}, food: {}, workouts: {} },
   measurements: [],
   strengthTests: [],
   photoSets: [],
@@ -55,6 +56,8 @@ function migrate(raw) {
 
   if (raw && raw.profile && raw.profile.onboardingComplete == null) out.profile.onboardingComplete = true;
   out.daily ||= {}; out.meals ||= {}; out.workouts ||= {}; out.handstandPractice ||= {}; out.runs ||= {};
+  out.ai = { daily: {}, food: {}, workouts: {}, ...(raw.ai || {}) };
+  out.ai.daily ||= {}; out.ai.food ||= {}; out.ai.workouts ||= {};
   out.measurements = Array.isArray(raw.measurements) ? raw.measurements.filter(x => x && x.date && x.waist != null).map(x => ({ date: x.date, waist: +x.waist })) : [];
 
   if (Array.isArray(raw.strengthTests)) {
@@ -343,15 +346,28 @@ function activeSessionLooksComplete(a = state.activeSession) {
 function clearStaleActiveSession() {
   const a = state.activeSession;
   if (!a) return false;
-  // A completed-looking active session should never keep the other workouts locked.
-  // This can happen after testing/deleting a completed workout or after an old app version left stale state behind.
-  if (activeSessionLooksComplete(a)) {
+  const completedTwin = sessions().some(s =>
+    s.key === a.key && s.date === a.date && a.startedAt && s.startedAt && s.startedAt === a.startedAt
+  );
+  // Alte Versionen konnten eine bereits gespeicherte Einheit zusätzlich als "offen" liegen lassen.
+  if (activeSessionLooksComplete(a) || completedTwin) {
     delete state.activeSession;
     if (guided && guided.key === a.key && guided.date === a.date) guided = null;
     localStorage.setItem(STORE_KEY, JSON.stringify(state));
     return true;
   }
   return false;
+}
+
+function discardActiveSession({ ask = true } = {}) {
+  const a = state.activeSession;
+  if (!a) return true;
+  const wt = workoutTemplate(a.key, a.date || localDateKey());
+  if (ask && !confirm(`Offene Einheit „${wt.label}“ wirklich verwerfen? Bereits eingetragene, aber noch nicht abgeschlossene Sätze dieser offenen Einheit werden gelöscht.`)) return false;
+  delete state.activeSession;
+  if (guided && guided.key === a.key && guided.date === a.date) guided = null;
+  localStorage.setItem(STORE_KEY, JSON.stringify(state));
+  return true;
 }
 
 
@@ -447,18 +463,29 @@ function renderTrainingHistory() {
   count.textContent=String(list.length);
   if(!list.length){root.innerHTML='<p class="muted">Noch kein abgeschlossenes Training. Deine erste Einheit erscheint danach automatisch hier.</p>';return;}
   root.innerHTML=list.map(s=>{
-    const wt=workoutTemplate(s.key,s.date); const entries=wt.items.filter(item=>s.logs?.[item.id]);
-    return `<details class="history-session"><summary><span><b>${deDateLong(s.date)}</b><small>${wt.label}${s.startedAt?` · ${s.startedAt}`:''}</small></span><span class="history-chevron">›</span></summary><div class="history-exercises">${entries.map(item=>{const log=s.logs[item.id]; if(item.special)return `<div class="history-exercise"><b>${EX[item.id].name}</b><span>erledigt ✓</span></div>`; return `<div class="history-exercise"><b>${EX[item.id].name}</b><div class="history-set-list">${(log.sets||[]).map((set,i)=>`<span>S${i+1}: ${setDisplay(set,item)}</span>`).join('')}</div></div>`}).join('')}</div><div class="history-actions"><button class="small-btn danger" data-delete-workout="${s.id||''}" data-delete-date="${s.date}" data-delete-key="${s.key}" type="button">Training löschen</button></div></details>`;
+    const wt=workoutTemplate(s.key,s.date), entries=wt.items.filter(item=>s.logs?.[item.id]);
+    const ai=cachedWorkoutAI(s), aiDomId=`historyAi-${workoutAIKey(s).replace(/[^a-zA-Z0-9_-]/g,'-')}`;
+    return `<details class="history-session"><summary><span><b>${deDateLong(s.date)}</b><small>${wt.label}${s.startedAt?` · ${s.startedAt}`:''}</small></span><span class="history-chevron">›</span></summary><div class="history-exercises">${entries.map(item=>{const log=s.logs[item.id]; if(item.special)return `<div class="history-exercise"><b>${EX[item.id].name}</b><span>erledigt ✓</span></div>`; return `<div class="history-exercise"><b>${EX[item.id].name}</b><div class="history-set-list">${(log.sets||[]).map((set,i)=>`<span>S${i+1}: ${setDisplay(set,item)}</span>`).join('')}</div></div>`}).join('')}</div>
+      <div id="${aiDomId}" class="history-ai">${ai?aiTextHTML(ai):(hasGeminiKey()?'Noch keine KI-Auswertung für diese Einheit.':'Gemini-Key fehlt – Verlauf und Satzwerte bleiben trotzdem vollständig verfügbar.')}</div>
+      <div class="history-ai-actions"><button class="small-btn" data-ai-workout="${s.id||''}" data-ai-date="${s.date}" data-ai-key="${s.key}" data-ai-target="${aiDomId}" type="button" ${hasGeminiKey()?'':'disabled'}>${ai?'KI-Auswertung aktualisieren':'KI-Auswertung'}</button></div>
+      <div class="history-actions"><button class="small-btn danger" data-delete-workout="${s.id||''}" data-delete-date="${s.date}" data-delete-key="${s.key}" type="button">Training löschen</button></div></details>`;
   }).join('');
+  root.querySelectorAll('[data-ai-workout]').forEach(btn=>btn.onclick=e=>{
+    e.preventDefault();e.stopPropagation();
+    const session=list.find(x=>String(x.id||'')===String(btn.dataset.aiWorkout)&&x.date===btn.dataset.aiDate&&x.key===btn.dataset.aiKey) || list.find(x=>x.date===btn.dataset.aiDate&&x.key===btn.dataset.aiKey);
+    if(session)runWorkoutAI(session,btn.dataset.aiTarget,{force:true});
+  });
   root.querySelectorAll('[data-delete-workout]').forEach(btn=>btn.onclick=e=>{
     e.preventDefault(); e.stopPropagation(); if(!confirm('Dieses absolvierte Training wirklich löschen?'))return;
     const date=btn.dataset.deleteDate,id=btn.dataset.deleteWorkout,key=btn.dataset.deleteKey; const val=state.workouts[date];
     if(Array.isArray(val)){const next=val.filter(x=>String(x.id||'')!==String(id)); if(next.length)state.workouts[date]=next;else delete state.workouts[date];}
     else if(!id||String(val?.id||'')===String(id)) delete state.workouts[date];
-    // If an old/stale active copy of the deleted workout exists, remove it too.
-    if(state.activeSession && state.activeSession.date===date && state.activeSession.key===key){
+    const deletedSession=list.find(x=>String(x.id||'')===String(id)&&x.date===date&&x.key===key);
+    if(deletedSession) delete state.ai?.workouts?.[workoutAIKey(deletedSession)];
+    // Alte/offene Kopie derselben Einheit ebenfalls bereinigen. Andere Trainings werden grundsätzlich nicht mehr gesperrt.
+    if(state.activeSession && state.activeSession.key===key && (state.activeSession.date===date || activeSessionLooksComplete(state.activeSession))){
       delete state.activeSession;
-      if(guided && guided.date===date && guided.key===key) guided=null;
+      if(guided && guided.key===key) guided=null;
     }
     saveState(); renderWorkoutTabs(); renderTrainingHistory(); renderTrainingOverview(); renderDashboard();
   });
@@ -936,12 +963,16 @@ function renderWorkoutTabs() {
   const root = document.getElementById('workoutTabs');
   const activeKey = state.activeSession?.key || null;
   root.innerHTML = ['A','B','C'].map(k => {
-    const locked = activeKey && k !== activeKey;
-    return `<button type="button" data-workout-tab="${k}" class="${selectedWorkout === k ? 'active' : ''}" ${locked ? 'disabled' : ''}>${workoutTemplate(k).label}${locked ? ' · gesperrt' : ''}</button>`;
+    const isOpen = activeKey === k;
+    return `<button type="button" data-workout-tab="${k}" class="${selectedWorkout === k ? 'active' : ''}">${workoutTemplate(k).label}${isOpen ? ' · offen' : ''}</button>`;
   }).join('');
   root.querySelectorAll('[data-workout-tab]').forEach(btn => btn.onclick = () => {
-    if (btn.disabled) return;
-    selectedWorkout = btn.dataset.workoutTab; guided = null; manualWorkoutMode = true; renderWorkoutTabs(); renderTrainingOverview();
+    selectedWorkout = btn.dataset.workoutTab;
+    manualWorkoutMode = true;
+    if (state.activeSession?.key === selectedWorkout) restoreActiveSession();
+    else guided = null;
+    renderWorkoutTabs();
+    renderTrainingOverview();
   });
 }
 
@@ -956,19 +987,42 @@ function renderTrainingOverview() {
   }
   const wt = workoutTemplate(selectedWorkout, localDateKey()), rec = recoveryDecision();
   const activeForThisWorkout = state.activeSession && state.activeSession.key === selectedWorkout;
+  const otherActive = state.activeSession && state.activeSession.key !== selectedWorkout;
   const alreadyDone = workoutDoneDate(localDateKey(), selectedWorkout) && !activeForThisWorkout;
   const blockStart = ((['CHECK','STOP'].includes(rec.mode) && !activeForThisWorkout) || alreadyDone);
-  const btnText = alreadyDone ? 'Heute schon erledigt ✓' : (activeForThisWorkout ? 'Training fortsetzen' : (rec.mode === 'CHECK' ? 'Erst Recovery-Check ausfüllen' : rec.mode === 'STOP' ? 'Wegen Gelenk-Check nicht starten' : 'Geführtes Training starten'));
+  const btnText = alreadyDone ? 'Heute schon erledigt ✓' : (activeForThisWorkout ? 'Training fortsetzen' : (rec.mode === 'CHECK' ? 'Erst Recovery-Check ausfüllen' : rec.mode === 'STOP' ? 'Wegen Gelenk-Check nicht starten' : (otherActive ? `${wt.label} stattdessen starten` : 'Geführtes Training starten')));
+  const openInfo = otherActive ? (() => {
+    const openWt = workoutTemplate(state.activeSession.key, state.activeSession.date || localDateKey());
+    const openItem = openWt.items[state.activeSession.itemIndex || 0] || openWt.items[0];
+    return `<div class="open-session-card"><div><span>Offene Einheit gefunden</span><b>${openWt.label}</b><small>${EX[openItem.id]?.name || 'Training'} · Satz ${(state.activeSession.setIndex || 0) + 1}. Sie sperrt keine anderen Trainings mehr.</small></div><div class="action-row compact-row"><button id="resumeOpenWorkout" class="secondary grow" type="button">Offene Einheit fortsetzen</button><button id="discardOpenWorkout" class="danger-btn grow" type="button">Offene Einheit verwerfen</button></div></div>`;
+  })() : '';
   root.innerHTML = `<article class="card">
       <div class="workout-header"><div><div class="eyebrow">${wt.focus}</div><h2>${wt.label}</h2><p class="muted">${wt.duration}</p></div><span class="mode-badge ${['LIGHT','REDUCED'].includes(rec.mode)?'light':rec.mode==='STOP'?'stop':''}">${rec.mode}</span></div>
+      ${openInfo}
       <p class="coach-tip">${alreadyDone ? '<b>Heute erledigt:</b> Dieses Training ist schon gespeichert. Kein zweites Pflicht-Workout nötig.' : (activeForThisWorkout ? `<b>Offene Einheit:</b> ${EX[wt.items[state.activeSession.itemIndex]?.id || wt.items[0].id].name} · Satz ${(state.activeSession.setIndex || 0) + 1}.` : rec.text)} ${selectedWorkout === 'B' ? `Beine heute: <b>${EX[wt.legChoice].name}</b>.` : ''}</p>
       <button id="startWorkoutBtn" class="primary full" type="button" ${blockStart ? 'disabled' : ''}>${btnText}</button>
+      ${activeForThisWorkout ? '<button id="discardCurrentWorkout" class="danger-btn full secondary-line" type="button">Offene Einheit verwerfen und neu starten</button>' : ''}
     </article>
     <details class="inline-details workout-details"><summary>Übungen ansehen</summary><div class="workout-list">${wt.items.map(renderExerciseCard).join('')}</div></details>`;
+  document.getElementById('resumeOpenWorkout')?.addEventListener('click', () => {
+    selectedWorkout = state.activeSession.key; restoreActiveSession(); renderWorkoutTabs(); renderTrainingOverview();
+  });
+  document.getElementById('discardOpenWorkout')?.addEventListener('click', () => {
+    if (!discardActiveSession()) return; renderWorkoutTabs(); renderTrainingOverview(); renderDashboard();
+  });
+  document.getElementById('discardCurrentWorkout')?.addEventListener('click', () => {
+    if (!discardActiveSession()) return; startGuided(selectedWorkout); renderWorkoutTabs();
+  });
   document.getElementById('startWorkoutBtn').onclick = () => {
-    if (activeForThisWorkout) { guided = restoreActiveSession() ? guided : guided; renderTrainingOverview(); return; }
+    if (activeForThisWorkout) { restoreActiveSession(); renderTrainingOverview(); return; }
     if (alreadyDone) return;
+    if (otherActive) {
+      const openWt = workoutTemplate(state.activeSession.key, state.activeSession.date || localDateKey());
+      if (!confirm(`Es ist noch „${openWt.label}“ offen. Diese offene Einheit verwerfen und „${wt.label}“ starten?`)) return;
+      discardActiveSession({ ask:false });
+    }
     startGuided(selectedWorkout);
+    renderWorkoutTabs();
   };
 }
 
@@ -982,9 +1036,9 @@ function startGuided(key) {
   if (['CHECK','STOP'].includes(rec.mode)) return;
   guided = {
     key, date: localDateKey(), template: workoutTemplate(key, localDateKey()), itemIndex: 0, setIndex: 0,
-    logs: {}, startedAt: new Date().toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit', second:'2-digit' }), completed: false
+    logs: {}, aiFeedback: {}, startedAt: new Date().toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit', second:'2-digit' }), completed: false
   };
-  state.activeSession = { key, date: guided.date, itemIndex: 0, setIndex: 0, logs: {}, startedAt: guided.startedAt };
+  state.activeSession = { key, date: guided.date, itemIndex: 0, setIndex: 0, logs: {}, aiFeedback: {}, startedAt: guided.startedAt };
   saveState(false);
   renderTrainingOverview();
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -994,7 +1048,13 @@ function renderGuided() {
   const root = document.getElementById('guidedCoach');
   const wt = guided.template;
   if (guided.completed) {
-    root.innerHTML = `<div class="guided-shell"><article class="card done-screen"><div class="big-check">✓</div><div class="eyebrow">Training gespeichert</div><h2>${wt.label} erledigt</h2><p class="muted">Die komplette Einheit findest du jetzt unter „Vergangene Trainings“.</p><div class="action-row"><button id="viewCompletedWorkout" class="secondary" type="button">Training ansehen</button><button id="finishCoachBtn" class="primary" type="button">Zur Startseite</button></div></article></div>`;
+    const completedSession = guided.completedSession || sessions().find(x=>String(x.id)===String(guided.completedSessionId));
+    const cachedSummary = cachedWorkoutAI(completedSession);
+    root.innerHTML = `<div class="guided-shell"><article class="card done-screen"><div class="big-check">✓</div><div class="eyebrow">Training gespeichert</div><h2>${wt.label} erledigt</h2><p class="muted">Die komplette Einheit findest du jetzt unter „Vergangene Trainings“.</p>
+      <div class="context-ai-inline"><div class="ai-mini-head"><span>Gemini · Trainingsauswertung</span><small>${hasGeminiKey()?'bereit':'optional'}</small></div><p id="completedAiSummaryText">${cachedSummary?aiTextHTML(cachedSummary):(hasGeminiKey()?'Gemini kann die Einheit jetzt mit deinem letzten gleichen Training vergleichen.':'Unter Mehr einen Gemini-Key hinterlegen, um die Einheit hier auswerten zu lassen.')}</p><button id="completedAiSummaryBtn" class="secondary full" type="button" ${hasGeminiKey()?'':'disabled'}>${cachedSummary?'KI-Auswertung aktualisieren':'KI-Auswertung erstellen'}</button></div>
+      <div class="action-row"><button id="viewCompletedWorkout" class="secondary" type="button">Training ansehen</button><button id="finishCoachBtn" class="primary" type="button">Zur Startseite</button></div></article></div>`;
+    document.getElementById('completedAiSummaryBtn')?.addEventListener('click',()=>runWorkoutAI(completedSession,'completedAiSummaryText',{force:true}));
+    if(completedSession && hasGeminiKey() && state.settings.aiAutoTraining!==false && !cachedSummary) setTimeout(()=>runWorkoutAI(completedSession,'completedAiSummaryText'),0);
     document.getElementById('finishCoachBtn').onclick = () => { guided = null; selectedWorkout = wt.short === 'Mo' ? 'A' : selectedWorkout; switchView('today'); renderTrainingOverview(); };
     document.getElementById('viewCompletedWorkout').onclick = () => { guided=null; renderTrainingOverview(); renderTrainingHistory(); setTimeout(()=>document.getElementById('trainingHistoryCard')?.scrollIntoView({behavior:'smooth'}),80); };
     return;
@@ -1044,7 +1104,8 @@ function renderGuided() {
       <div class="coach-visual">${visualHTML(ex.visual, false, ex.name)}</div>
       <ul class="cue-list">${ex.cues.map(x => `<li>${x}</li>`).join('')}</ul>
       ${body}
-      <div class="coach-nav">${guided.itemIndex > 0 ? '<button id="prevExercise" class="secondary" type="button">← Zurück</button>' : ''}<button id="cancelCoach" class="ghost-btn" type="button">Training verlassen</button></div>
+      ${renderGuidedAIBox(item)}
+      <div class="coach-nav">${guided.itemIndex > 0 ? '<button id="prevExercise" class="secondary" type="button">← Zurück</button>' : ''}<button id="cancelCoach" class="ghost-btn" type="button">Training verlassen</button><button id="discardCoach" class="danger-btn" type="button">Offene Einheit verwerfen</button></div>
     </article>
   </div>`;
 
@@ -1053,6 +1114,12 @@ function renderGuided() {
       persistActive(); guided = null; renderTrainingOverview();
     }
   };
+  document.getElementById('discardCoach')?.addEventListener('click',()=>{
+    if(!discardActiveSession())return; guided=null; renderWorkoutTabs(); renderTrainingOverview(); renderDashboard();
+  });
+  document.getElementById('manualSetAiBtn')?.addEventListener('click',()=>{
+    const sets=guided.logs?.[item.id]?.sets||[]; if(!sets.length)return; const idx=sets.length-1; runSetAI(item,sets[idx],idx,{force:true});
+  });
   document.getElementById('prevExercise')?.addEventListener('click', () => {
     guided.itemIndex = Math.max(0, guided.itemIndex - 1);
     const prevItem=guided.template.items[guided.itemIndex];
@@ -1092,10 +1159,11 @@ function saveGuidedSet(item) {
   } else {
     guided.itemIndex++; guided.setIndex = 0; persistActive(); renderGuided();
   }
+  if (hasGeminiKey() && state.settings.aiAutoTraining !== false && !guided.completed) setTimeout(()=>runSetAI(item,entry,count-1),0);
 }
 
 function persistActive() {
-  state.activeSession = { key: guided.key, date: guided.date, itemIndex: guided.itemIndex, setIndex: guided.setIndex, logs: guided.logs, startedAt: guided.startedAt };
+  state.activeSession = { key: guided.key, date: guided.date, itemIndex: guided.itemIndex, setIndex: guided.setIndex, logs: guided.logs, aiFeedback: guided.aiFeedback || {}, startedAt: guided.startedAt };
   localStorage.setItem(STORE_KEY, JSON.stringify(state));
 }
 
@@ -1146,6 +1214,8 @@ function completeGuidedSession() {
   updateAutoStrengthFromSession(session);
   delete state.activeSession;
   guided.completed = true;
+  guided.completedSessionId = session.id;
+  guided.completedSession = session;
   saveState();
   renderGuided();
 }
@@ -1154,6 +1224,7 @@ const timer = { id: null, remaining: 0, onDone: null, allowSkipDone: true };
 function openTimer(seconds, label, onDone, allowSkipDone = true) {
   clearInterval(timer.id); timer.remaining = Math.max(0, Math.round(seconds)); timer.onDone = onDone; timer.allowSkipDone = allowSkipDone;
   document.getElementById('timerLabel').textContent = label;
+  setTimerCoachLine('');
   document.getElementById('timerOverlay').classList.remove('hidden');
   updateTimerDisplay();
   timer.id = setInterval(() => {
@@ -1264,6 +1335,7 @@ document.getElementById('clearSelectedFood')?.addEventListener('click',()=>{sele
 document.getElementById('addSelectedFood')?.addEventListener('click',()=>{
   if(!selectedFood)return; const amount=+document.getElementById('foodAmount').value; if(!amount||amount<=0)return;
   addFoodEntry(selectedFood,amount); selectedFood=null; document.getElementById('selectedFoodCard').classList.add('hidden'); document.getElementById('foodSearch').value=''; renderFoodSearchResults('');
+  if(hasGeminiKey()&&state.settings.aiAutoFood!==false)setTimeout(()=>runFoodAI('foodAiAnswer'),0);
 });
 
 document.getElementById('mealForm').onsubmit = e => {
@@ -1271,6 +1343,7 @@ document.getElementById('mealForm').onsubmit = e => {
   if (!name || !cal) return;
   addMeal({ name, cal, protein:+document.getElementById('mealProtein').value||0, carbs:+document.getElementById('mealCarbs').value||0, fat:+document.getElementById('mealFat').value||0, fiber:+document.getElementById('mealFiber').value||0 });
   e.target.reset();
+  if(hasGeminiKey()&&state.settings.aiAutoFood!==false)setTimeout(()=>runFoodAI('foodAiAnswer'),0);
 };
 document.getElementById('clearMeals').onclick = () => { if (confirm('Heutige Lebensmittel wirklich komplett leeren?')) { state.meals[localDateKey()] = []; saveState(); } };
 
@@ -1531,6 +1604,7 @@ function restoreActiveSession() {
     itemIndex: a.itemIndex || 0,
     setIndex: a.setIndex || 0,
     logs: a.logs || {},
+    aiFeedback: a.aiFeedback || {},
     startedAt: a.startedAt || new Date().toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit', second:'2-digit' }),
     completed: false
   };
@@ -1717,7 +1791,12 @@ function renderDailyFlow() {
   if(step===4){flowBody(`${flowHeader('Tagescheck 5/5','Noch zwei schnelle Dinge','Gewicht ist fürs Trendtracking. Wenn du heute nicht wiegen kannst, lass es leer.')}<label class="flow-label">Gewicht kg<input id="dailyWeightFlow" class="flow-input" type="number" step="0.1" inputmode="decimal" value="${d.weight||''}" placeholder="optional"></label><label class="flow-check-single"><input id="dailyCreatineFlow" type="checkbox" ${d.creatine?'checked':''}>5 g Creatin heute genommen</label><button id="flowNext" class="primary full" type="button">Check auswerten</button>`);document.getElementById('flowNext').onclick=()=>{const w=document.getElementById('dailyWeightFlow').value;d.weight=w===''?null:+w;d.creatine=document.getElementById('dailyCreatineFlow').checked;const key=localDateKey();state.daily[key]={...(state.daily[key]||{}),sleep:d.sleep,energy:d.energy,elbow:d.elbow,shoulder:d.shoulder,weight:d.weight,creatine:d.creatine};saveState(false);renderAllDerived();guidedFlow.step++;renderDailyFlow();};return;}
   const rec=recoveryDecision(); const plan=planForDate();
   const modeTitle=rec.mode==='NORMAL'?'Du kannst normal trainieren':rec.mode==='LIGHT'?'Heute etwas leichter':rec.mode==='REDUCED'?'Heute deutlich reduzieren':rec.mode==='STOP'?'Heute kein schmerzhaftes Oberkörpertraining':'Check erledigt';
-  flowBody(`<div class="flow-center">${flowHeader('Check fertig',modeTitle,rec.text)}<div class="flow-recovery-badge ${rec.mode.toLowerCase()}">${rec.mode}<b>${rec.score??'–'}</b></div><div class="flow-next-card"><span>Heute geplant</span><b>${plan.title}</b><small>${plan.duration}</small></div><button id="flowFinishDaily" class="primary full" type="button">Weiter</button></div>`);
+  const dailyAiCached=cachedDailyAI();
+  flowBody(`<div class="flow-center">${flowHeader('Check fertig',modeTitle,rec.text)}<div class="flow-recovery-badge ${rec.mode.toLowerCase()}">${rec.mode}<b>${rec.score??'–'}</b></div><div class="flow-next-card"><span>Heute geplant</span><b>${plan.title}</b><small>${plan.duration}</small></div>
+    <div class="flow-ai-box"><div class="flow-ai-head"><span>Gemini · Tagescoach</span><small>${hasGeminiKey()?'bereit':'optional'}</small></div><p id="dailyFlowAiText">${dailyAiCached?aiTextHTML(dailyAiCached):(hasGeminiKey()?'Gemini kann Schlaf, Energie und Gelenkstatus jetzt direkt einordnen.':'Unter Mehr einen Gemini-Key hinterlegen. Der normale Recovery-Check funktioniert auch ohne KI.')}</p><button id="dailyFlowAiBtn" class="secondary full" type="button" ${hasGeminiKey()?'':'disabled'}>${dailyAiCached?'KI-Tagesanalyse aktualisieren':'KI-Tagesanalyse'}</button></div>
+    <button id="flowFinishDaily" class="primary full" type="button">Weiter</button></div>`);
+  document.getElementById('dailyFlowAiBtn')?.addEventListener('click',()=>runDailyAI('dailyFlowAiText',{force:true}));
+  if(hasGeminiKey()&&state.settings.aiAutoDaily!==false&&!dailyAiCached)setTimeout(()=>runDailyAI('dailyFlowAiText'),0);
   document.getElementById('flowFinishDaily').onclick=finishDailyFlow;
 }
 
@@ -1757,8 +1836,12 @@ function renderFoodFlow() {
     const amount=document.getElementById('guidedFoodAmount'); const update=()=>{d.amount=+amount.value||0;const m=foodMacros(food,d.amount);document.getElementById('guidedMacroKcal').textContent=`${m.cal} kcal`;document.getElementById('guidedMacroText').textContent=`${m.protein} g P · ${m.carbs} g KH · ${m.fat} g Fett`;}; amount.oninput=update;document.querySelectorAll('[data-guided-amount]').forEach(b=>b.onclick=()=>{amount.value=b.dataset.guidedAmount;update();});
     document.getElementById('guidedAddFood').onclick=()=>{if(d.amount<=0)return;addFoodEntry(food,d.amount);guidedFlow.step=2;renderFoodFlow();};return;
   }
-  const totals=mealTotals(); const analysis=foodCoachAnalysis(totals);
-  flowBody(`<div class="flow-center">${flowHeader('Gespeichert',analysis.title,analysis.text)}<div class="flow-summary"><div><span>Heute kcal</span><b>${Math.round(totals.calories)} / ${state.settings.calories}</b></div><div><span>Protein</span><b>${Math.round(totals.protein)} / ${state.settings.protein} g</b></div><div><span>KH</span><b>${Math.round(totals.carbs)} g</b></div><div><span>Fett</span><b>${Math.round(totals.fat)} g</b></div></div><div class="flow-actions"><button id="flowFoodMore" class="secondary" type="button">Noch etwas</button><button id="flowFoodDone" class="primary" type="button">Fertig</button></div></div>`);
+  const totals=mealTotals(); const analysis=foodCoachAnalysis(totals); const foodAiCached=cachedFoodAI();
+  flowBody(`<div class="flow-center">${flowHeader('Gespeichert',analysis.title,analysis.text)}<div class="flow-summary"><div><span>Heute kcal</span><b>${Math.round(totals.calories)} / ${state.settings.calories}</b></div><div><span>Protein</span><b>${Math.round(totals.protein)} / ${state.settings.protein} g</b></div><div><span>KH</span><b>${Math.round(totals.carbs)} g</b></div><div><span>Fett</span><b>${Math.round(totals.fat)} g</b></div></div>
+    <div class="flow-ai-box"><div class="flow-ai-head"><span>Gemini · Ernährung</span><small>${hasGeminiKey()?'bereit':'optional'}</small></div><p id="foodFlowAiText">${foodAiCached?aiTextHTML(foodAiCached):(hasGeminiKey()?'Gemini kann dir jetzt sagen, was heute noch sinnvoll fehlt.':'Unter Mehr einen Gemini-Key hinterlegen. Die normalen Makro-Empfehlungen bleiben immer verfügbar.')}</p><button id="foodFlowAiBtn" class="secondary full" type="button" ${hasGeminiKey()?'':'disabled'}>${foodAiCached?'KI-Tipp aktualisieren':'KI-Tipp zu heute'}</button></div>
+    <div class="flow-actions"><button id="flowFoodMore" class="secondary" type="button">Noch etwas</button><button id="flowFoodDone" class="primary" type="button">Fertig</button></div></div>`);
+  document.getElementById('foodFlowAiBtn')?.addEventListener('click',()=>runFoodAI('foodFlowAiText',{force:true}));
+  if(hasGeminiKey()&&state.settings.aiAutoFood!==false&&!foodAiCached)setTimeout(()=>runFoodAI('foodFlowAiText'),0);
   document.getElementById('flowFoodMore').onclick=()=>{guidedFlow.step=0;guidedFlow.data={foodId:null,amount:100,query:''};renderFoodFlow();};
   document.getElementById('flowFoodDone').onclick=()=>{hideGuidedOverlay();guidedFlow={type:null,step:0,data:{},pending:null,editing:false};switchView('food',true);};
 }
@@ -1794,10 +1877,24 @@ renderAll();
 initGuidedExperience();
 
 
-// ---------- V4.2 Bring-your-own Gemini AI ----------
+// ---------- V4.3 contextual Bring-your-own Gemini AI ----------
+const aiBusy = new Set();
 function geminiKey() { return (localStorage.getItem(GEMINI_KEY_STORE) || '').trim(); }
 function hasGeminiKey() { return geminiKey().length >= 20; }
 function escapeHTML(value='') { return String(value).replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch])); }
+function aiTextHTML(text='') { return escapeHTML(text).replace(/\n/g,'<br>'); }
+function setAIElement(id, text, type='answer') {
+  const el=document.getElementById(id); if(!el)return;
+  el.classList.remove('loading','error','hidden');
+  if(type==='loading'){el.classList.add('loading');el.textContent=text;return;}
+  if(type==='error'){el.classList.add('error');el.textContent=text;return;}
+  el.innerHTML=aiTextHTML(text);
+}
+function setTimerCoachLine(text='',type='answer'){
+  const el=document.getElementById('timerCoachLine'); if(!el)return;
+  if(!text){el.className='timer-coach-line hidden';el.textContent='';return;}
+  el.className=`timer-coach-line ${type==='loading'?'loading':type==='error'?'error':''}`;el.innerHTML=type==='answer'?aiTextHTML(text):escapeHTML(text);
+}
 
 function renderGeminiUI() {
   const connected = hasGeminiKey();
@@ -1809,8 +1906,11 @@ function renderGeminiUI() {
   if (coachBadge) { coachBadge.textContent = connected ? 'BEREIT' : 'AUS'; coachBadge.className = `mode-badge ${connected ? '' : 'light'}`; }
   const hint = document.getElementById('aiCoachHint');
   if (hint) hint.textContent = connected
-    ? 'Gemini ist bereit. Die KI bekommt nur die Daten, die für deine jeweilige Frage relevant sind.'
+    ? 'Gemini ist nicht nur Chat: Tagescheck, Training und Essen können direkt im jeweiligen Ablauf analysiert werden.'
     : 'Optional: Hinterlege unter Mehr deinen eigenen Gemini-Key. Ohne Key funktioniert die App vollständig weiter.';
+  const toggles={aiAutoDaily:'aiAutoDaily',aiAutoTraining:'aiAutoTraining',aiAutoFood:'aiAutoFood'};
+  Object.entries(toggles).forEach(([id,key])=>{const e=document.getElementById(id);if(e)e.checked=state.settings[key]!==false;});
+  renderFoodAIUI();
 }
 
 function lastCompletedWorkout() {
@@ -1821,10 +1921,13 @@ function compactWorkoutForAI(session) {
   if (!session) return null;
   const wt = workoutTemplate(session.key, session.date);
   return {
+    id: session.id || null,
     date: session.date,
     workout: wt.label,
     exercises: wt.items.filter(i=>session.logs?.[i.id]?.sets?.length).map(i=>({
+      exerciseId:i.id,
       exercise: EX[i.id]?.name || i.id,
+      target: targetText(i),
       sets: session.logs[i.id].sets.map(s=>({repsOrSeconds:s.value, load:s.load ?? null, rir:s.rir ?? null}))
     }))
   };
@@ -1835,7 +1938,7 @@ function aiContext(kind='custom', question='') {
   const d = state.daily[today] || {};
   const meals = mealTotals(today);
   const plan = planForDate(today);
-  const recentWorkouts = sessions().slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3).map(compactWorkoutForAI);
+  const recentWorkouts = sessions().slice().sort((a,b)=>`${b.date}-${b.finishedAt||''}`.localeCompare(`${a.date}-${a.finishedAt||''}`)).slice(0,4).map(compactWorkoutForAI);
   const profile = state.profile || {};
   return {
     requestType: kind,
@@ -1844,7 +1947,7 @@ function aiContext(kind='custom', question='') {
     profile: {
       age: profile.age, sex: profile.sex, heightCm: profile.height, currentWeightKg: latestWeight(),
       goal: profile.goal, goalMode: profile.goalMode, activity: profile.activity, typicalSleep: profile.sleepBaseline,
-      dietary: { halal: !!profile.halal, lactoseFree: !!profile.lactoseFree, vegetarian: !!profile.vegetarian }
+      dietary: { halal: !!profile.diet?.halal, lactoseFree: !!profile.diet?.lactoseFree, vegetarian: !!profile.diet?.vegetarian }
     },
     todayCheck: { sleepHours:d.sleep ?? null, energy:d.energy ?? null, elbowPain:d.elbow ?? null, shoulderPain:d.shoulder ?? null, weightKg:d.weight ?? null },
     recovery: recoveryDecision(today),
@@ -1857,7 +1960,7 @@ function aiContext(kind='custom', question='') {
 
 function aiPrompt(kind, question='') {
   const labels = {
-    today:'Bewerte den heutigen Tagescheck und sag mir, was ich heute beim Training oder bei der Regeneration beachten soll.',
+    today:'Bewerte den heutigen Tagescheck und sag mir konkret, was ich heute beim Training oder bei der Regeneration beachten soll.',
     training:'Bewerte mein letztes Training im Vergleich zu meinen bisherigen Werten. Nenne konkret 1–3 Dinge, die ich beim nächsten Training verbessern soll.',
     food:'Sag mir anhand meiner heutigen Makros, was ich heute noch sinnvoll essen sollte. Priorisiere Protein und Kalorienziel und beachte meine Ernährungsangaben.',
     custom: question || 'Gib mir eine kurze Coaching-Empfehlung.'
@@ -1866,22 +1969,17 @@ function aiPrompt(kind, question='') {
   return `Du bist ein knapper, evidenzorientierter Calisthenics-Coach in einer Fitness-App. Antworte auf Deutsch.\n\nRegeln:\n- Maximal 5 kurze Punkte, keine langen Einleitungen.\n- Nutze ausschließlich die gelieferten Nutzerdaten; erfinde keine Messwerte.\n- Bei Schmerzen >=4/10 keine belastende Übung empfehlen; bei anhaltenden oder zunehmenden Beschwerden zur medizinischen Abklärung raten.\n- Keine Diagnose stellen.\n- Bei Ernährung konkrete einfache Vorschläge machen, aber keine exakten Nährwerte erfinden, wenn sie nicht in den Daten stehen.\n- Das Trainingsprogramm der App ist die Basis; ändere es nur, wenn Recovery/Schmerz eine Anpassung verlangt.\n\nAufgabe: ${labels[kind] || labels.custom}\n\nAPP-DATEN:\n${JSON.stringify(ctx)}`;
 }
 
-async function geminiGenerate(prompt, {timeoutMs=20000}={}) {
+async function geminiGenerate(prompt, {timeoutMs=20000,maxTokens=500}={}) {
   const key = geminiKey();
   if (!key) throw new Error('Kein Gemini API-Key gespeichert.');
   const controller = new AbortController();
-  const timer = setTimeout(()=>controller.abort(), timeoutMs);
+  const timeout = setTimeout(()=>controller.abort(), timeoutMs);
   try {
     const res = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
       method:'POST',
       headers:{'Content-Type':'application/json','x-goog-api-key':key},
       signal:controller.signal,
-      body:JSON.stringify({
-        model:GEMINI_MODEL,
-        input:prompt,
-        store:false,
-        generation_config:{temperature:0.35,max_output_tokens:500}
-      })
+      body:JSON.stringify({model:GEMINI_MODEL,input:prompt,store:false,generation_config:{temperature:0.3,max_output_tokens:maxTokens}})
     });
     const data = await res.json().catch(()=>({}));
     if (!res.ok) {
@@ -1890,19 +1988,13 @@ async function geminiGenerate(prompt, {timeoutMs=20000}={}) {
       if ([401,403].includes(res.status) || /api[- ]?key/i.test(msg)) throw new Error('API-Key wurde abgelehnt. Prüfe den Key in Google AI Studio.');
       throw new Error(msg);
     }
-    const answer = (data.steps || [])
-      .filter(step=>step?.type==='model_output')
-      .flatMap(step=>step.content || [])
-      .filter(part=>part?.type==='text' && part.text)
-      .map(part=>part.text)
-      .join('\n')
-      .trim();
+    const answer = (data.steps || []).filter(step=>step?.type==='model_output').flatMap(step=>step.content || []).filter(part=>part?.type==='text' && part.text).map(part=>part.text).join('\n').trim();
     if (!answer) throw new Error(data?.errors?.[0]?.message || 'Gemini hat keine Textantwort geliefert.');
     return answer;
   } catch (err) {
     if (err?.name === 'AbortError') throw new Error('Gemini antwortet gerade zu langsam. Bitte erneut versuchen.');
     throw err;
-  } finally { clearTimeout(timer); }
+  } finally { clearTimeout(timeout); }
 }
 
 function showAIAnswer(message, type='answer') {
@@ -1911,49 +2003,108 @@ function showAIAnswer(message, type='answer') {
   box.classList.remove('hidden','error','loading');
   if (type === 'loading') { box.classList.add('loading'); box.textContent = message; return; }
   if (type === 'error') box.classList.add('error');
-  box.innerHTML = escapeHTML(message).replace(/\n/g,'<br>');
+  box.innerHTML = aiTextHTML(message);
 }
 
 async function runCoachAI(kind='custom', question='') {
-  if (!hasGeminiKey()) {
-    showAIAnswer('Noch kein Gemini-Key gespeichert. Öffne Mehr → KI Coach und hinterlege deinen eigenen Key.', 'error');
-    return;
-  }
+  if (!hasGeminiKey()) { showAIAnswer('Noch kein Gemini-Key gespeichert. Öffne Mehr → KI Coach und hinterlege deinen eigenen Key.', 'error'); return; }
   showAIAnswer('Coach denkt kurz nach …','loading');
   try { showAIAnswer(await geminiGenerate(aiPrompt(kind, question))); }
   catch (e) { showAIAnswer(e.message || 'KI-Anfrage fehlgeschlagen.', 'error'); }
 }
 
+function dailyAISignature(date=localDateKey()) {
+  const d=state.daily[date]||{}; return [d.sleep??'',d.energy??'',d.elbow??'',d.shoulder??'',d.weight??'',d.creatine?1:0,recoveryDecision(date).mode].join('|');
+}
+function cachedDailyAI(date=localDateKey()) { const x=state.ai?.daily?.[date]; return x&&x.signature===dailyAISignature(date)?x.text:null; }
+async function runDailyAI(targetId='dailyFlowAiText',{force=false}={}) {
+  const date=localDateKey(), busyKey=`daily:${date}`;
+  if(!hasGeminiKey()){setAIElement(targetId,'Kein Gemini-Key gespeichert. Unter Mehr → KI Coach eintragen.','error');return;}
+  const cached=cachedDailyAI(date); if(cached&&!force){setAIElement(targetId,cached);return;}
+  if(aiBusy.has(busyKey))return; aiBusy.add(busyKey); setAIElement(targetId,'Gemini bewertet Schlaf, Energie und Gelenke …','loading');
+  try{
+    const text=await geminiGenerate(aiPrompt('today'),{maxTokens:280}); state.ai.daily[date]={signature:dailyAISignature(date),text,at:Date.now()}; saveState(false); setAIElement(targetId,text);
+  }catch(e){setAIElement(targetId,e.message||'KI-Tagesanalyse fehlgeschlagen.','error');}
+  finally{aiBusy.delete(busyKey);}
+}
+
+function foodAISignature(date=localDateKey()) {
+  const t=mealTotals(date), count=(state.meals[date]||[]).length; return [count,t.calories,t.protein,t.carbs,t.fat,t.fiber,state.settings.calories,state.settings.protein].join('|');
+}
+function cachedFoodAI(date=localDateKey()) { const x=state.ai?.food?.[date]; return x&&x.signature===foodAISignature(date)?x.text:null; }
+async function runFoodAI(targetId='foodAiAnswer',{force=false}={}) {
+  const date=localDateKey(), busyKey=`food:${date}`;
+  if(!hasGeminiKey()){setAIElement(targetId,'Kein Gemini-Key gespeichert. Unter Mehr → KI Coach eintragen.','error');return;}
+  const cached=cachedFoodAI(date); if(cached&&!force){setAIElement(targetId,cached);return;}
+  if(aiBusy.has(busyKey))return; aiBusy.add(busyKey); setAIElement(targetId,'Gemini prüft deine heutigen Makros …','loading');
+  try{
+    const text=await geminiGenerate(aiPrompt('food'),{maxTokens:320}); state.ai.food[date]={signature:foodAISignature(date),text,at:Date.now()}; saveState(false); setAIElement(targetId,text); renderFoodAIUI();
+  }catch(e){setAIElement(targetId,e.message||'KI-Ernährungsanalyse fehlgeschlagen.','error');}
+  finally{aiBusy.delete(busyKey);}
+}
+function renderFoodAIUI(){
+  const badge=document.getElementById('foodAiBadge'),answer=document.getElementById('foodAiAnswer'),button=document.getElementById('foodAiAsk'); if(!badge||!answer||!button)return;
+  const connected=hasGeminiKey(), cached=cachedFoodAI(); badge.textContent=connected?'BEREIT':'AUS'; badge.className=`mode-badge ${connected?'':'light'}`;
+  if(cached){answer.innerHTML=aiTextHTML(cached);button.textContent='KI-Tipp aktualisieren';}
+  else{answer.textContent=connected?'Gemini kann deine bisherigen Mahlzeiten und Restziele direkt hier bewerten.':'Unter Mehr einen Gemini-Key hinterlegen – danach erscheint der KI-Tipp direkt hier.';button.textContent='KI-Ernährungstipp holen';}
+  button.disabled=!connected;
+}
+
+function workoutAIKey(session){return String(session?.id || `${session?.date||''}-${session?.key||''}-${session?.startedAt||''}`);}
+function cachedWorkoutAI(session){return session?state.ai?.workouts?.[workoutAIKey(session)]?.text||null:null;}
+function previousComparableWorkout(session){
+  if(!session)return null; return sessions().filter(s=>s.key===session.key&&workoutAIKey(s)!==workoutAIKey(session)).sort((a,b)=>`${b.date}-${b.finishedAt||''}`.localeCompare(`${a.date}-${a.finishedAt||''}`))[0]||null;
+}
+function workoutSummaryPrompt(session){
+  const previous=previousComparableWorkout(session); const rec=recoveryDecision(session.date);
+  return `Du bist ein knapper Calisthenics-Coach. Antworte auf Deutsch. Analysiere die gerade absolvierte Einheit im Vergleich zur vorherigen gleichen Einheit. Maximal 5 kurze Punkte. Nenne: 1) was besser/gleich/schlechter war, 2) konkrete nächste Ziele für die wichtigsten Übungen, 3) nur falls nötig einen Recovery-Hinweis. Erfinde nichts. Bei Schmerzen >=4/10 keine belastende Empfehlung.\n\nAKTUELL:\n${JSON.stringify(compactWorkoutForAI(session))}\n\nVORHERIGE GLEICHE EINHEIT:\n${JSON.stringify(compactWorkoutForAI(previous))}\n\nRECOVERY AM TAG:\n${JSON.stringify(rec)}`;
+}
+async function runWorkoutAI(session,targetId,{force=false}={}){
+  if(!session)return; const key=workoutAIKey(session),busyKey=`workout:${key}`;
+  if(!hasGeminiKey()){setAIElement(targetId,'Kein Gemini-Key gespeichert. Unter Mehr → KI Coach eintragen.','error');return;}
+  const cached=cachedWorkoutAI(session); if(cached&&!force){setAIElement(targetId,cached);return;}
+  if(aiBusy.has(busyKey))return; aiBusy.add(busyKey); setAIElement(targetId,'Gemini vergleicht die Einheit mit deinem letzten Training …','loading');
+  try{const text=await geminiGenerate(workoutSummaryPrompt(session),{maxTokens:360});state.ai.workouts[key]={text,at:Date.now()};saveState(false);setAIElement(targetId,text);}
+  catch(e){setAIElement(targetId,e.message||'KI-Trainingsanalyse fehlgeschlagen.','error');}
+  finally{aiBusy.delete(busyKey);}
+}
+
+function setFeedbackPrompt(item,entry,setIndex){
+  const prev=previousExerciseLog(item.id,guided?.key), previous=prev?.log?.sets?.[setIndex]||null, todaySets=guided?.logs?.[item.id]?.sets||[];
+  return `Du bist ein Calisthenics-Coach während eines laufenden Trainings. Antworte auf Deutsch in maximal 2 kurzen Sätzen. Satz 1: bewerte den gerade gespeicherten Satz im Vergleich zum gleichen Satz des letzten Trainings. Satz 2: gib ein konkretes Ziel für den nächsten Satz oder, falls die Übung fertig ist, für das nächste Training. Beachte RIR und Bandhilfe. Weniger Bandhilfe bei gleicher Leistung ist besser. Keine Motivationstexte. Erfinde keine Werte.\n\nÜbung: ${EX[item.id]?.name||item.id}\nZiel: ${targetText(item)}\nSatznummer: ${setIndex+1}\nGerade: ${JSON.stringify(entry)}\nLetztes Mal gleicher Satz: ${JSON.stringify(previous)}\nHeutige Sätze: ${JSON.stringify(todaySets)}\nRecovery: ${JSON.stringify(recoveryDecision(guided?.date||localDateKey()))}`;
+}
+function guidedFeedbackKey(itemId,setIndex){return `${itemId}:${setIndex}`;}
+function latestGuidedFeedback(itemId){
+  if(!guided?.aiFeedback)return null; const entries=Object.entries(guided.aiFeedback).filter(([k])=>k.startsWith(`${itemId}:`)).sort((a,b)=>+b[0].split(':')[1]-+a[0].split(':')[1]); return entries[0]?.[1]||null;
+}
+function renderGuidedAIBox(item){
+  if(item.special)return''; const sets=guided?.logs?.[item.id]?.sets||[], latest=latestGuidedFeedback(item.id), connected=hasGeminiKey();
+  const text=latest||(!connected?'Gemini-Key fehlt. Die normalen Satzvergleiche funktionieren trotzdem.':sets.length?'Gemini kann den letzten Satz kurz bewerten.':'Nach dem ersten gespeicherten Satz bekommst du hier den KI-Vergleich.');
+  return `<div class="context-ai-inline"><div class="ai-mini-head"><span>Gemini · Satz-Coach</span><small>${connected?'bereit':'optional'}</small></div><p id="guidedAiFeedbackText">${aiTextHTML(text)}</p>${sets.length?`<button id="manualSetAiBtn" class="secondary full" type="button" ${connected?'':'disabled'}>${latest?'KI-Tipp aktualisieren':'KI-Tipp zu letztem Satz'}</button>`:''}</div>`;
+}
+async function runSetAI(item,entry,setIndex,{force=false}={}){
+  if(!guided||!hasGeminiKey())return; const feedbackKey=guidedFeedbackKey(item.id,setIndex),sessionToken=`${guided.date}|${guided.key}|${guided.startedAt}`,busyKey=`set:${sessionToken}:${feedbackKey}`;
+  const sameExerciseOnScreen=()=>guided?.template?.items?.[guided.itemIndex]?.id===item.id;
+  if(guided.aiFeedback?.[feedbackKey]&&!force){if(sameExerciseOnScreen())setAIElement('guidedAiFeedbackText',guided.aiFeedback[feedbackKey]);setTimerCoachLine(guided.aiFeedback[feedbackKey]);return;}
+  if(aiBusy.has(busyKey))return; aiBusy.add(busyKey); guided.aiFeedback||={}; if(!guided.completed)persistActive(); if(sameExerciseOnScreen())setAIElement('guidedAiFeedbackText','Coach denkt kurz nach …','loading'); setTimerCoachLine('Gemini bewertet den Satz …','loading');
+  try{
+    const text=await geminiGenerate(setFeedbackPrompt(item,entry,setIndex),{maxTokens:180});
+    if(guided&&!guided.completed&&`${guided.date}|${guided.key}|${guided.startedAt}`===sessionToken){guided.aiFeedback[feedbackKey]=text;persistActive();}
+    else if(state.activeSession&&`${state.activeSession.date}|${state.activeSession.key}|${state.activeSession.startedAt}`===sessionToken){state.activeSession.aiFeedback||={};state.activeSession.aiFeedback[feedbackKey]=text;localStorage.setItem(STORE_KEY,JSON.stringify(state));}
+    if(sameExerciseOnScreen())setAIElement('guidedAiFeedbackText',text); setTimerCoachLine(text);
+  }catch(e){const msg=e.message||'KI-Satzfeedback fehlgeschlagen.';if(sameExerciseOnScreen())setAIElement('guidedAiFeedbackText',msg,'error');setTimerCoachLine(msg,'error');}
+  finally{aiBusy.delete(busyKey);}
+}
+
 function initGeminiControls() {
   document.querySelectorAll('[data-ai-prompt]').forEach(btn=>btn.onclick=()=>runCoachAI(btn.dataset.aiPrompt));
-  document.getElementById('aiCoachAsk')?.addEventListener('click',()=>{
-    const q=document.getElementById('aiCoachQuestion')?.value.trim();
-    if(!q){document.getElementById('aiCoachQuestion')?.focus();return;}
-    runCoachAI('custom',q);
-  });
-  document.getElementById('toggleGeminiKey')?.addEventListener('click',()=>{
-    const input=document.getElementById('geminiApiKey'); if(!input)return;
-    input.type=input.type==='password'?'text':'password';
-    document.getElementById('toggleGeminiKey').textContent=input.type==='password'?'Anzeigen':'Verbergen';
-  });
-  document.getElementById('saveGeminiKey')?.addEventListener('click',()=>{
-    const input=document.getElementById('geminiApiKey'); const key=input?.value.trim()||'';
-    const msg=document.getElementById('geminiKeyMessage');
-    if(key.length<20){if(msg)msg.textContent='Der Key sieht zu kurz aus.';return;}
-    localStorage.setItem(GEMINI_KEY_STORE,key); if(msg)msg.textContent='Key nur auf diesem Gerät gespeichert ✓'; renderGeminiUI();
-  });
-  document.getElementById('deleteGeminiKey')?.addEventListener('click',()=>{
-    localStorage.removeItem(GEMINI_KEY_STORE); const input=document.getElementById('geminiApiKey'); if(input)input.value='';
-    const msg=document.getElementById('geminiKeyMessage'); if(msg)msg.textContent='Key gelöscht ✓'; renderGeminiUI();
-  });
-  document.getElementById('testGeminiKey')?.addEventListener('click',async()=>{
-    const input=document.getElementById('geminiApiKey'); const typed=input?.value.trim()||''; const msg=document.getElementById('geminiKeyMessage');
-    if(typed && typed!==geminiKey()) localStorage.setItem(GEMINI_KEY_STORE,typed);
-    if(!hasGeminiKey()){if(msg)msg.textContent='Bitte zuerst einen API-Key eintragen.';return;}
-    if(msg)msg.textContent='Verbindung wird getestet …';
-    try { await geminiGenerate('Antworte exakt mit: OK', {timeoutMs:15000}); if(msg)msg.textContent=`Verbunden ✓ · ${GEMINI_MODEL}`; renderGeminiUI(); }
-    catch(e){if(msg)msg.textContent=e.message||'Verbindung fehlgeschlagen.';}
-  });
+  document.getElementById('aiCoachAsk')?.addEventListener('click',()=>{const q=document.getElementById('aiCoachQuestion')?.value.trim();if(!q){document.getElementById('aiCoachQuestion')?.focus();return;}runCoachAI('custom',q);});
+  document.getElementById('foodAiAsk')?.addEventListener('click',()=>runFoodAI('foodAiAnswer',{force:true}));
+  document.getElementById('toggleGeminiKey')?.addEventListener('click',()=>{const input=document.getElementById('geminiApiKey');if(!input)return;input.type=input.type==='password'?'text':'password';document.getElementById('toggleGeminiKey').textContent=input.type==='password'?'Anzeigen':'Verbergen';});
+  document.getElementById('saveGeminiKey')?.addEventListener('click',()=>{const input=document.getElementById('geminiApiKey');const key=input?.value.trim()||'';const msg=document.getElementById('geminiKeyMessage');if(key.length<20){if(msg)msg.textContent='Der Key sieht zu kurz aus.';return;}localStorage.setItem(GEMINI_KEY_STORE,key);if(msg)msg.textContent='Key nur auf diesem Gerät gespeichert ✓';renderGeminiUI();});
+  document.getElementById('deleteGeminiKey')?.addEventListener('click',()=>{localStorage.removeItem(GEMINI_KEY_STORE);const input=document.getElementById('geminiApiKey');if(input)input.value='';const msg=document.getElementById('geminiKeyMessage');if(msg)msg.textContent='Key gelöscht ✓';renderGeminiUI();});
+  document.getElementById('testGeminiKey')?.addEventListener('click',async()=>{const input=document.getElementById('geminiApiKey');const typed=input?.value.trim()||'';const msg=document.getElementById('geminiKeyMessage');if(typed&&typed!==geminiKey())localStorage.setItem(GEMINI_KEY_STORE,typed);if(!hasGeminiKey()){if(msg)msg.textContent='Bitte zuerst einen API-Key eintragen.';return;}if(msg)msg.textContent='Verbindung wird getestet …';try{await geminiGenerate('Antworte exakt mit: OK',{timeoutMs:15000,maxTokens:30});if(msg)msg.textContent=`Verbunden ✓ · ${GEMINI_MODEL}`;renderGeminiUI();}catch(e){if(msg)msg.textContent=e.message||'Verbindung fehlgeschlagen.';}});
+  ['aiAutoDaily','aiAutoTraining','aiAutoFood'].forEach(id=>document.getElementById(id)?.addEventListener('change',e=>{state.settings[id]=e.target.checked;saveState(false);renderGeminiUI();}));
 }
 
 initGeminiControls();

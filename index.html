@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Cal Coach" />
   <meta name="description" content="Persönlicher Calisthenics Coach: Training, Ernährung, Progression und Statistik." />
-  <title>Calisthenics Coach V4.2.2 Guided AI</title>
+  <title>Calisthenics Coach V4.3 Guided AI</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <link rel="stylesheet" href="styles.css" />
@@ -16,7 +16,7 @@
 <body>
   <header class="topbar">
     <div>
-      <div class="eyebrow">Calisthenics Coach · V4.2.2 AI</div>
+      <div class="eyebrow">Calisthenics Coach · V4.3 AI</div>
       <h1>Calisthenics Coach</h1>
     </div>
     <div class="top-actions">
@@ -163,7 +163,7 @@
         <div><div class="eyebrow">Coach-Modus</div><h2>Training</h2></div>
       </div>
       <article class="card compact-note">
-        <p class="muted">Standardmäßig führt dich die App durch das heutige Training. Andere Einheiten kannst du unten bei Bedarf auswählen.</p>
+        <p class="muted">Standardmäßig führt dich die App durch das heutige Training. Andere Einheiten kannst du jederzeit auswählen – eine offene Einheit sperrt die anderen nicht mehr.</p>
       </article>
       <div id="trainingOverview"></div>
       <details class="card collapsible-card slim-collapse">
@@ -188,6 +188,12 @@
       <article class="card food-coach-card prominent">
         <div class="card-head"><div><div class="eyebrow">Coach heute</div><h3 id="foodCoachTitle">Tagesziel im Blick</h3></div><span id="foodCoachBadge" class="mode-badge">START</span></div>
         <p id="foodCoachAdvice" class="lead">Trage dein Essen ein. Die App sagt dir danach automatisch, was noch fehlt.</p>
+      </article>
+
+      <article id="foodAiCard" class="card context-ai-card">
+        <div class="card-head"><div><div class="eyebrow">Gemini · Ernährung</div><h3>KI-Tipp zu deinem heutigen Essen</h3></div><span id="foodAiBadge" class="mode-badge light">AUS</span></div>
+        <p id="foodAiAnswer" class="muted">Mit gespeichertem Gemini-Key bekommst du hier direkt einen konkreten Vorschlag passend zu deinen heutigen Makros.</p>
+        <button id="foodAiAsk" class="secondary full" type="button">KI-Ernährungstipp holen</button>
       </article>
 
       <div class="food-macro-grid">
@@ -371,7 +377,7 @@
     </section>
 
     <section id="settings" class="view" data-view>
-      <div class="section-head"><div><div class="eyebrow">App</div><h2>Mehr & Einstellungen</h2></div><span class="pill">V4.2.2</span></div>
+      <div class="section-head"><div><div class="eyebrow">App</div><h2>Mehr & Einstellungen</h2></div><span class="pill">V4.3</span></div>
       <article class="card">
         <div class="card-head"><div><div class="eyebrow">Planwerte</div><h3>Deine Basis</h3></div></div>
         <div class="settings-grid">
@@ -426,6 +432,11 @@
           <button id="deleteGeminiKey" class="danger-btn grow" type="button">Key löschen</button>
         </div>
         <div id="geminiKeyMessage" class="status"></div>
+        <div class="ai-auto-grid">
+          <label><input id="aiAutoDaily" type="checkbox"> <span><b>Tagescheck automatisch</b><small>KI analysiert den fertigen Recovery-Check.</small></span></label>
+          <label><input id="aiAutoTraining" type="checkbox"> <span><b>Training automatisch</b><small>Kurzer KI-Tipp nach jedem Satz + Zusammenfassung am Ende.</small></span></label>
+          <label><input id="aiAutoFood" type="checkbox"> <span><b>Essen automatisch</b><small>Nach einem neuen Essen direkt einen Tages-Tipp erzeugen.</small></span></label>
+        </div>
         <details class="inline-details" style="margin-top:12px">
           <summary>Sicherheit & kostenlose Nutzung</summary>
           <p class="muted" style="margin-top:10px">Diese statische GitHub-App sendet deinen Key direkt aus deinem Browser an Google. Das ist bequem für „Bring your own key“, aber weniger sicher als ein Backend. Nutze deshalb einen separaten, auf Gemini beschränkten Key und aktiviere keine Abrechnung, wenn du garantiert im Free Tier bleiben willst. Daten aus der kostenlosen Gemini-Stufe können von Google zur Produktverbesserung verwendet werden.</p>
@@ -468,6 +479,7 @@
     <div class="timer-card">
       <div class="eyebrow" id="timerLabel">Pause</div>
       <div id="timerValue" class="timer-value">02:00</div>
+      <div id="timerCoachLine" class="timer-coach-line hidden"></div>
       <div class="timer-actions">
         <button id="timerMinus" class="small-btn" type="button">−15 s</button>
         <button id="timerSkip" class="secondary" type="button">Überspringen</button>

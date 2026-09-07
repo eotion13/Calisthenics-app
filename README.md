@@ -1,25 +1,27 @@
-# Calisthenics Coach V4.2.2 Guided AI
+# Calisthenics Coach V4.3 Guided AI
 
-V4.2.2 basiert auf V4.2.1 und aktualisiert den geführten Coach um eine optionale Gemini-KI mit Bring-your-own-key.
+V4.3 behebt die Trainings-Sperre grundlegend und integriert Gemini direkt in die geführten Abläufe statt nur als Chat auf der Startseite.
 
-## Neu
-- eigener Gemini API-Key pro Nutzer unter **Mehr → KI Coach**
-- Key bleibt nur auf dem jeweiligen Gerät und wird nicht in Backups exportiert
-- Verbindungstest und Key löschen
-- KI-Schnellfragen: Tagescheck, letztes Training, heutige Ernährung
-- freie Coach-Frage mit den relevanten lokalen App-Daten als Kontext
-- Standardmodell: `gemini-3.5-flash-lite`
+## Training: keine Sackgassen mehr
+- A, B und C sind jederzeit auswählbar. Eine offene Einheit sperrt die anderen Tabs nicht mehr.
+- Wenn noch eine alte/offene Einheit existiert, kann man sie fortsetzen oder ausdrücklich verwerfen.
+- Auch im laufenden Coach gibt es „Offene Einheit verwerfen“.
+- Alte vollständig gespeicherte Rest-Sessions werden automatisch bereinigt.
+- Vergangene Trainings bleiben einsehbar, bearbeitete Sätze werden lokal gespeichert.
 
-## Sicherheit
-Die App ist statisch auf GitHub Pages. Der vom Nutzer eingegebene Key wird deshalb clientseitig verwendet. Das ist für BYOK bequem, aber weniger sicher als ein Backend. Google empfiehlt für produktive Apps einen Backend-Proxy.
+## Gemini jetzt im Ablauf
+Mit eigenem Gemini-Key erscheint KI kontextuell an mehreren Stellen:
+- Tagescheck: Recovery-Analyse direkt im Check-Ergebnis.
+- Training: kurzer Gemini-Tipp nach jedem Satz; normaler lokaler Vergleich bleibt zusätzlich bestehen.
+- Trainingsende: automatische Zusammenfassung und Vergleich mit der letzten gleichen Einheit.
+- Trainingsverlauf: jede gespeicherte Einheit kann nachträglich von Gemini analysiert werden.
+- Essen: KI-Tipp direkt nach dem geführten Essen sowie als Karte im Food-Tracker.
+- Startseite: freier Coach-Chat bleibt zusätzlich bestehen.
 
-## GitHub Pages
-Alle Dateien direkt in den Root des Repositories hochladen.
+Unter Mehr → KI Coach kann jede Person getrennt einstellen, ob KI nach Tagescheck, Training und Essen automatisch laufen soll.
 
+## Datenschutz / Bring your own key
+Der Gemini-Key wird separat nur im lokalen Browser gespeichert und nicht im App-Backup exportiert. Da die App statisch über GitHub Pages läuft, wird der Key für Gemini-Anfragen direkt aus dem Browser an Google gesendet. Für maximale Sicherheit wäre ein Backend besser; V4.3 bleibt bewusst beim gewünschten BYOK-Modell.
 
-## V4.2.2 KI-Fix
-- Gemini-Modell auf `gemini-3.5-flash-lite` aktualisiert.
-- Auf Googles aktuelle **Interactions API** migriert (`store:false`), mit `gemini-3.5-flash-lite`.
-- Service-Worker-Cache auf V4.2.2 erhöht, damit GitHub Pages/Safari die neue JS-Datei übernimmt.
-
-- KI-Anfragen werden mit `store:false` gesendet; die App nutzt keinen serverseitigen Gemini-Konversationsspeicher.
+## Daten
+Der Hauptspeicher-Key bleibt `calisthenicsCoach_v2`, damit vorhandene Trainings-, Ernährungs- und Profildaten bei Updates erhalten bleiben.
