@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Cal Coach" />
   <meta name="description" content="Persönlicher Calisthenics Coach: Training, Ernährung, Progression und Statistik." />
-  <title>Calisthenics Coach V3.1</title>
+  <title>Calisthenics Coach V4 Guided</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <link rel="stylesheet" href="styles.css" />
@@ -16,7 +16,7 @@
 <body>
   <header class="topbar">
     <div>
-      <div class="eyebrow">Calisthenics Coach · V3.1</div>
+      <div class="eyebrow">Calisthenics Coach · V4 Guided</div>
       <h1>Calisthenics Coach</h1>
     </div>
     <div class="top-actions">
@@ -66,6 +66,9 @@
             </div>
             <span id="dailyScore" class="score-ring">–</span>
           </div>
+          <button id="guidedCheckBtn" class="primary full guided-entry-btn" type="button">Geführten Check starten</button>
+          <details class="inline-details guided-backup-form">
+            <summary>Manuell bearbeiten</summary>
           <form id="dailyForm" class="form-grid compact-form">
             <label>Gewicht kg<input id="dWeight" type="number" step="0.1" inputmode="decimal" placeholder="87,0"></label>
             <label>Schlaf h<input id="dSleep" type="number" step="0.1" inputmode="decimal" placeholder="5,5"></label>
@@ -83,6 +86,7 @@
             <button class="primary span-2" type="submit">Check speichern</button>
           </form>
           <div id="dailyMsg" class="status"></div>
+          </details>
         </article>
 
         <article class="card">
@@ -94,8 +98,8 @@
             <button class="small-btn" data-nav="food" type="button">Essen öffnen</button>
           </div>
           <div class="nutrition-big clean-nutrition">
-            <div><strong id="todayCalories">0</strong><span>/ 2.300 kcal</span></div>
-            <div><strong id="todayProtein">0</strong><span>/ 170 g Protein</span></div>
+            <div><strong id="todayCalories">0</strong><span id="todayCaloriesGoal">/ – kcal</span></div>
+            <div><strong id="todayProtein">0</strong><span id="todayProteinGoal">/ – g Protein</span></div>
           </div>
           <div class="progress-line"><span id="calProgress" style="width:0%"></span></div>
           <p id="nutritionCoach" class="muted">Mahlzeiten eintragen, dann rechnet die App automatisch.</p>
@@ -152,6 +156,11 @@
 
     <section id="food" class="view" data-view>
       <div class="section-head"><div><div class="eyebrow">Ernährung</div><h2>Food Tracker</h2><p class="muted">Lebensmittel auswählen, Menge eingeben, fertig.</p></div><span id="foodModeBadge" class="mode-badge">CUT</span></div>
+
+      <article class="card guided-food-card prominent">
+        <div><div class="eyebrow">Geführt</div><h3>Essen Schritt für Schritt</h3><p class="muted">Lebensmittel wählen → Menge → automatische Nährwerte → direkte Empfehlung.</p></div>
+        <button id="guidedFoodBtn" class="primary full" type="button">Essen geführt eintragen</button>
+      </article>
 
       <article class="card food-coach-card prominent">
         <div class="card-head"><div><div class="eyebrow">Coach heute</div><h3 id="foodCoachTitle">Tagesziel im Blick</h3></div><span id="foodCoachBadge" class="mode-badge">START</span></div>
@@ -320,7 +329,7 @@
         <article class="card">
           <div class="card-head"><div><div class="eyebrow">Regeneration</div><h3>Dein Engpass</h3></div></div>
           <div class="phase-criteria">
-            <div><span>•</span><span>Aktuell 5–6 h Schlaf: Montag + Donnerstag priorisieren.</span></div>
+            <div><span>•</span><span id="roadmapSleepText">Schlaf prüfen und Trainingsvolumen daran anpassen.</span></div>
             <div><span>•</span><span>Home C darf ausfallen, wenn du platt bist.</span></div>
             <div><span>•</span><span>Keine dauernden Maximalversuche.</span></div>
           </div>
@@ -339,28 +348,28 @@
     </section>
 
     <section id="settings" class="view" data-view>
-      <div class="section-head"><div><div class="eyebrow">App</div><h2>Mehr & Einstellungen</h2></div><span class="pill">V3.1.0</span></div>
+      <div class="section-head"><div><div class="eyebrow">App</div><h2>Mehr & Einstellungen</h2></div><span class="pill">V4.0.0</span></div>
       <article class="card">
         <div class="card-head"><div><div class="eyebrow">Planwerte</div><h3>Deine Basis</h3></div></div>
         <div class="settings-grid">
-          <div><span>Kalorien</span><b>2.300 kcal</b></div>
-          <div><span>Protein</span><b>170+ g</b></div>
-          <div><span>Creatin</span><b>5 g täglich</b></div>
-          <div><span>Bänder</span><b>10 · 20 · 30 kg</b></div>
-          <div><span>Training</span><b>Mo · Do · Wochenende</b></div>
-          <div><span>Schlaf aktuell</span><b>5–6 h</b></div>
+          <div><span>Kalorien</span><b id="settingCalories">–</b></div>
+          <div><span>Protein</span><b id="settingProtein">–</b></div>
+          <div><span>Creatin</span><b id="settingCreatine">–</b></div>
+          <div><span>Bänder</span><b id="settingBands">–</b></div>
+          <div><span>Training</span><b id="settingTrainingDays">–</b></div>
+          <div><span>Schlaf typisch</span><b id="settingSleep">–</b></div>
         </div>
       </article>
 
       <details class="card collapsible-card">
         <summary>Profil & Zielrahmen</summary>
         <div class="settings-grid" style="margin-top:12px">
-          <div><span>Profil</span><b>34 · männlich · 180 cm</b></div>
-          <div><span>Startpunkt</span><b>87 kg · vorher 98 kg</b></div>
-          <div><span>Priorität</span><b>Kraft → Muskeln → shredded</b></div>
+          <div><span>Profil</span><b id="profileSummary">–</b></div>
+          <div><span>Startpunkt</span><b id="profileStart">–</b></div>
+          <div><span>Priorität</span><b id="profileGoal">–</b></div>
           <div><span>Skills</span><b>Handstand/HSPU zuerst</b></div>
-          <div><span>Ernährung</span><b>halal · laktosefrei</b></div>
-          <div><span>Phase 1</span><b>Cut/Recomp · kein Bulk</b></div>
+          <div><span>Ernährung</span><b id="profileDiet">–</b></div>
+          <div><span>Phase 1</span><b id="profilePhase">–</b></div>
         </div>
       </details>
 
@@ -369,6 +378,15 @@
         <div class="action-row compact-row">
           <button class="secondary grow" data-nav="skills" type="button">Skills öffnen</button>
           <button class="secondary grow" data-nav="roadmap" type="button">Langfristigen Plan öffnen</button>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><div><div class="eyebrow">Profil</div><h3>Geführtes Setup</h3></div></div>
+        <p class="muted">Jede Person, die den Link auf einem neuen Gerät öffnet, startet mit einem eigenen Profil von null.</p>
+        <div class="action-row compact-row">
+          <button id="editProfileBtn" class="secondary grow" type="button">Profil-Fragen erneut starten</button>
+          <button id="newProfileBtn" class="danger-btn grow" type="button">Neues Profil auf diesem Gerät</button>
         </div>
       </article>
 
@@ -391,6 +409,17 @@
     <button class="nav-btn" data-target="stats"><span>↗</span>Fortschritt</button>
     <button class="nav-btn" data-target="settings"><span>⚙</span>Mehr</button>
   </nav>
+
+  <div id="guidedOverlay" class="guided-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="guidedTitle">
+    <div class="guided-flow-shell">
+      <div class="guided-flow-top">
+        <button id="guidedBack" class="guided-back hidden" type="button" aria-label="Zurück">‹</button>
+        <div class="guided-flow-progress"><span id="guidedProgressBar"></span></div>
+        <button id="guidedClose" class="guided-close hidden" type="button" aria-label="Schließen">×</button>
+      </div>
+      <div id="guidedFlowBody" class="guided-flow-body"></div>
+    </div>
+  </div>
 
   <div id="timerOverlay" class="timer-overlay hidden" role="dialog" aria-modal="true">
     <div class="timer-card">

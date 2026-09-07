@@ -1,7 +1,7 @@
 'use strict';
 
 const STORE_KEY = 'calisthenicsCoach_v2'; // bewusst gleich: V2-Daten bleiben erhalten
-const VERSION = '3.1.0';
+const VERSION = '4.0.0';
 
 const pad = n => String(n).padStart(2, '0');
 const localDateKey = (date = new Date()) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
@@ -26,13 +26,16 @@ const dayDiff = (a, b) => Math.round((parseDateKey(b) - parseDateKey(a)) / 86400
 
 const defaultState = {
   profile: {
-    age: 34, sex: 'm', height: 180, startWeight: 87, bands: [10, 20, 30], sleepBaseline: '5–6',
-    goal: 'Maximale Kraft → Muskeln → shredded → Handstand-Skills'
+    onboardingComplete: false,
+    name: '', age: 30, sex: 'm', height: 175, startWeight: 75,
+    bands: [10,20,30], sleepBaseline: '7', activity: 'mixed', goalMode: 'recomp', trainingDays: 3,
+    diet: { halal: false, lactoseFree: false, vegetarian: false },
+    goal: 'Kraft → Muskeln → Skills'
   },
-  settings: { calories: 2300, protein: 170, carbs: 245, fat: 70, fiber: 30, creatine: 5, vacation: false },
+  settings: { calories: 2200, protein: 150, carbs: 235, fat: 65, fiber: 30, creatine: 5, vacation: false },
   daily: {}, meals: {}, workouts: {}, handstandPractice: {}, runs: {},
   measurements: [],
-  strengthTests: [{ date: '2026-09-07', pullups: 2, dips: 10, handstand: 5, hang: 45, hspu: 0 }],
+  strengthTests: [],
   photoSets: [],
   skillStages: { hspu: 0, flag: 0 },
   app: { version: VERSION }
@@ -48,6 +51,7 @@ function migrate(raw) {
     app: { version: VERSION }
   };
 
+  if (raw && raw.profile && raw.profile.onboardingComplete == null) out.profile.onboardingComplete = true;
   out.daily ||= {}; out.meals ||= {}; out.workouts ||= {}; out.handstandPractice ||= {}; out.runs ||= {};
   out.measurements = Array.isArray(raw.measurements) ? raw.measurements.filter(x => x && x.date && x.waist != null).map(x => ({ date: x.date, waist: +x.waist })) : [];
 
@@ -59,7 +63,7 @@ function migrate(raw) {
       .map(x => ({ date: x.date, pullups: +x.pullups || 0, dips: +x.dips || 0, handstand: +x.handstand || 0, hang: +x.hang || 0, hspu: +x.hspu || 0 }));
     out.strengthTests = legacyStrength.length ? legacyStrength : clone(defaultState.strengthTests);
   }
-  if (!Array.isArray(out.strengthTests) || !out.strengthTests.length) out.strengthTests = clone(defaultState.strengthTests);
+  if (!Array.isArray(out.strengthTests)) out.strengthTests = [];
 
   out.photoSets = Array.isArray(raw.photoSets) ? raw.photoSets : [];
   if (!out.photoSets.length && raw.photos && Object.values(raw.photos).some(Boolean)) {
@@ -105,6 +109,18 @@ const EX = {
     cues: ['Aus aktivem Hang starten.', 'Kinn klar über die Stange.', 'Kein Kipping und kein Beinpendeln.'],
     mistakes: ['Halbe ROM.', 'Hals nach vorne strecken statt den Körper hochzuziehen.'],
     progress: '2 → 4 → 6 → 8–10 strikt. Danach Weighted Pull-ups.'
+  },
+  negativePull: {
+    name: 'Negative Pull-ups', cat: 'Pull', visual: 'pullup',
+    cues: ['Mit Tritt/kleinem Sprung in die obere Position kommen.', '3–5 Sekunden kontrolliert absenken.', 'Unten kurz ruhig werden und neu starten.'],
+    mistakes: ['Einfach herunterfallen.', 'Schulter unten komplett passiv kollabieren lassen.'],
+    progress: '4×5 kontrollierte Negative → Band Pull-ups oder erste strikte Pull-ups.'
+  },
+  assistedDips: {
+    name: 'Assisted Dips', cat: 'Push', visual: 'dip',
+    cues: ['Mit Band oder Fußunterstützung nur so viel helfen wie nötig.', 'Schultern stabil halten.', 'Kontrolliert absenken.'],
+    mistakes: ['Zu tief gehen, wenn die Schulter meckert.', 'Mit viel Schwung arbeiten.'],
+    progress: '3×8 sauber → weniger Hilfe → normale Dips.'
   },
   bandPullA: {
     name: 'Band Pull-ups · Kraftvolumen', cat: 'Pull', visual: 'pullupBand',
@@ -236,6 +252,12 @@ const WARMUP_STEPS = [
 function workoutTemplate(key, dateKey = localDateKey()) {
   const week = isoWeekNumber(parseDateKey(dateKey));
   const thursdayLeg = week % 2 === 0 ? 'pistol' : 'bulgarian';
+  const hasBands = Array.isArray(state.profile?.bands) && state.profile.bands.length > 0;
+  const dipBeginner = maxStrength('dips') < 3;
+  const pullAssistA = hasBands ? { id: 'bandPullA', sets: 4, min: 4, max: 6, unit: 'reps', rest: 180, loadType: 'band' } : { id:'negativePull', sets:4, min:3, max:5, unit:'reps', rest:150, suffix:'3–5 s absenken' };
+  const pullAssistB = hasBands ? { id: 'bandPullB', sets: 4, min: 5, max: 8, unit: 'reps', rest: 150, loadType: 'band' } : { id:'negativePull', sets:4, min:3, max:5, unit:'reps', rest:150, suffix:'3–5 s absenken' };
+  const dipA = dipBeginner ? {id:'assistedDips',sets:3,min:5,max:8,unit:'reps',rest:150} : {id:'dips',sets:3,min:6,max:9,unit:'reps',rest:150};
+  const dipB = dipBeginner ? {id:'assistedDips',sets:3,min:5,max:8,unit:'reps',rest:150} : {id:'dips',sets:3,min:6,max:10,unit:'reps',rest:150};
   const common = {
     A: {
       label: 'Montag · Park A', short: 'Mo', duration: '45–60 Min.', focus: 'Pull + Push + Handstand',
@@ -243,8 +265,8 @@ function workoutTemplate(key, dateKey = localDateKey()) {
         { id: 'warmup', special: 'warmup' },
         { id: 'handstand', special: 'handstand', minutes: 8 },
         { id: 'pullup', sets: 1, min: 1, max: 2, unit: 'reps', rest: 180 },
-        { id: 'bandPullA', sets: 4, min: 4, max: 6, unit: 'reps', rest: 180, loadType: 'band' },
-        { id: 'dips', sets: 3, min: 6, max: 9, unit: 'reps', rest: 150 },
+        pullAssistA,
+        dipA,
         { id: 'rows', sets: 3, min: 8, max: 12, unit: 'reps', rest: 120 },
         { id: 'bulgarian', sets: 3, min: 8, max: 12, unit: 'reps', rest: 90, suffix: 'je Bein · 3 s runter' },
         { id: 'hollow', sets: 3, min: 20, max: 30, unit: 's', rest: 60 }
@@ -256,8 +278,8 @@ function workoutTemplate(key, dateKey = localDateKey()) {
         { id: 'warmup', special: 'warmup' },
         { id: 'handstand', special: 'handstand', minutes: 8 },
         { id: 'pike', sets: 4, min: 3, max: 5, unit: 'reps', rest: 150, progressGoal: '4×6 = nächste Stufe' },
-        { id: 'bandPullB', sets: 4, min: 5, max: 8, unit: 'reps', rest: 150, loadType: 'band' },
-        { id: 'dips', sets: 3, min: 6, max: 10, unit: 'reps', rest: 150 },
+        pullAssistB,
+        dipB,
         { id: thursdayLeg, sets: 3, min: 8, max: 12, unit: 'reps', rest: 90, suffix: 'je Bein', dynamicLeg: true },
         { id: 'kneeRaises', sets: 3, min: 6, max: 10, unit: 'reps', rest: 90 },
         { id: 'deadHang', sets: 2, min: 30, max: 45, unit: 's', rest: 90 }
@@ -513,7 +535,7 @@ function addFoodEntry(food, amount, key = localDateKey()) {
 }
 
 function latestStrength() {
-  return [...state.strengthTests].sort((a, b) => a.date.localeCompare(b.date)).at(-1) || defaultState.strengthTests[0];
+  return [...state.strengthTests].sort((a, b) => a.date.localeCompare(b.date)).at(-1) || {date:localDateKey(),pullups:0,dips:0,pushups:0,handstand:0,hang:0,hspu:0};
 }
 function maxStrength(field) {
   return Math.max(0, ...state.strengthTests.map(x => +x[field] || 0));
@@ -554,7 +576,12 @@ function bandRecommendation() {
     }
     if (found) break;
   }
-  if (!found) return { band: 10, text: 'Start: 10-kg-Band. Nimm das leichteste Band, mit dem alle Sätze sauber gehen.' };
+  if (!found) {
+    const avail=[...(state.profile?.bands||[])].sort((a,b)=>a-b);
+    const base=maxStrength('pullups');
+    const band = !avail.length ? 0 : (base<=0 ? avail.at(-1) : base<=2 ? (avail.includes(10)?10:avail[0]) : avail[0]);
+    return { band, text: !avail.length ? 'Keine Bänder hinterlegt → Negative Pull-ups als Assistenz nutzen.' : `Start: ${band}-kg-Band. Nimm nur so viel Hilfe wie nötig.` };
+  }
   const target = found.id === 'bandPullA' ? 6 : 8;
   const sets = found.log.sets.slice(-4);
   const sameBand = sets.every(s => (+s.load || 0) === (+sets[0].load || 0));
@@ -1338,7 +1365,7 @@ function renderCreatineStreak() {
 }
 
 function renderAllDerived() {
-  renderDashboard(); renderMeals(); renderVacation(); renderStats(); renderSkills(); renderRoadmap(); renderPhotos();
+  renderDashboard(); renderMeals(); renderVacation(); renderStats(); renderSkills(); renderRoadmap(); renderPhotos(); renderProfileSettings();
 }
 function restoreActiveSession() {
   if (!state.activeSession) return false;
@@ -1370,7 +1397,8 @@ function renderAll() {
   updateOnline();
 }
 
-function switchView(id) {
+function switchView(id, skipGuard=false) {
+  if(!skipGuard && state.profile?.onboardingComplete && id!=='today' && !dailyCheckComplete()) { startDailyCheck({view:id}); return; }
   if (id === 'train' && !state.activeSession && planForDate().type !== 'workout') manualWorkoutMode = false;
   document.querySelectorAll('[data-view]').forEach(v=>v.classList.toggle('active',v.id===id));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.target===id));
@@ -1381,7 +1409,7 @@ function switchView(id) {
 document.querySelectorAll('.nav-btn').forEach(btn=>btn.onclick=()=>switchView(btn.dataset.target));
 document.querySelectorAll('[data-nav]').forEach(btn=>btn.onclick=()=>switchView(btn.dataset.nav));
 
-document.getElementById('openTodayWorkout').onclick=()=>{if(state.activeSession){selectedWorkout=state.activeSession.key;switchView('train');restoreActiveSession();renderTrainingOverview();return;}const plan=planForDate();if(plan.type!=='workout')return;if(workoutDoneDate(localDateKey(),plan.workout))return;selectedWorkout=plan.workout;switchView('train');startGuided(plan.workout);};
+document.getElementById('openTodayWorkout').onclick=()=>{if(!dailyCheckComplete()){startDailyCheck({action:'todayWorkout'});return;}startTodayWorkoutAfterCheck();};
 document.getElementById('quickHandstandBtn').onclick=startHandstandSession;
 document.getElementById('startSkillTimer').onclick=startHandstandSession;
 document.getElementById('measureWaistNow').onclick=()=>{switchView('stats');setTimeout(()=>document.getElementById('wWaist').focus(),350);};
@@ -1391,7 +1419,7 @@ async function exportBackup() {
   try{photoBlobs=await photoGetAll();}catch(e){console.warn('Fotos konnten nicht ins Backup aufgenommen werden',e);}
   const backup={...state,photoBlobs};
   const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}),a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);a.download=`calisthenics-coach-v3.1-${localDateKey()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  a.href=URL.createObjectURL(blob);a.download=`calisthenics-coach-v4-guided-${localDateKey()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 document.getElementById('exportBtn').onclick=exportBackup;
 document.getElementById('importFile').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;try{const raw=JSON.parse(await f.text());const blobs=Array.isArray(raw.photoBlobs)?raw.photoBlobs:[];delete raw.photoBlobs;state=migrate(raw);for(const rec of blobs){try{await photoPut(rec);}catch(err){console.warn(err);}}saveState();renderAll();alert('Backup importiert ✓');}catch(err){console.error(err);alert('Backup konnte nicht gelesen werden.');}};
@@ -1404,4 +1432,208 @@ if('serviceWorker'in navigator) window.addEventListener('load',()=>navigator.ser
 function updateOnline(){const b=document.getElementById('onlineBadge');b.textContent=navigator.onLine?'online':'offline';b.classList.toggle('offline',!navigator.onLine)}
 window.addEventListener('online',updateOnline);window.addEventListener('offline',updateOnline);
 
+
+// ---------- V4 Guided Experience ----------
+let guidedFlow = { type:null, step:0, data:{}, pending:null, editing:false };
+
+function dailyCheckComplete(key = localDateKey()) {
+  const d = state.daily[key] || {};
+  return d.sleep != null && d.energy != null && d.elbow != null && d.shoulder != null;
+}
+
+function calculateNutritionTargets(profile) {
+  const w = Math.max(40, +profile.startWeight || 75);
+  const h = Math.max(140, +profile.height || 175);
+  const age = Math.max(16, +profile.age || 30);
+  const sexConst = profile.sex === 'f' ? -161 : 5;
+  const bmr = 10*w + 6.25*h - 5*age + sexConst;
+  const activityFactor = profile.activity === 'active' ? 1.65 : profile.activity === 'low' ? 1.35 : 1.5;
+  const tdee = bmr * activityFactor;
+  const adjustment = profile.goalMode === 'cut' ? -350 : profile.goalMode === 'gain' ? 200 : -150;
+  const calories = Math.max(1500, Math.round((tdee + adjustment) / 50) * 50);
+  const protein = Math.round((w * (profile.goalMode === 'gain' ? 1.8 : 2.0)) / 5) * 5;
+  const fat = Math.round(Math.max(55, w * 0.8) / 5) * 5;
+  const carbs = Math.max(100, Math.round(((calories - protein*4 - fat*9) / 4) / 5) * 5);
+  return { calories, protein, fat, carbs, fiber:30, creatine:5 };
+}
+
+function guidedProgress(percent) {
+  const bar=document.getElementById('guidedProgressBar');
+  if(bar) bar.style.width=`${clamp(percent,0,100)}%`;
+}
+function showGuidedOverlay() { document.getElementById('guidedOverlay').classList.remove('hidden'); document.body.classList.add('flow-open'); }
+function hideGuidedOverlay() { document.getElementById('guidedOverlay').classList.add('hidden'); document.body.classList.remove('flow-open'); }
+function flowBody(html) { document.getElementById('guidedFlowBody').innerHTML=html; }
+function setFlowChrome({back=false,close=false,progress=0}={}) {
+  document.getElementById('guidedBack').classList.toggle('hidden',!back);
+  document.getElementById('guidedClose').classList.toggle('hidden',!close);
+  guidedProgress(progress);
+}
+function optionButton(value,label,sub='') { return `<button class="flow-option" type="button" data-flow-value="${value}"><b>${label}</b>${sub?`<small>${sub}</small>`:''}</button>`; }
+function flowHeader(kicker,title,text='') { return `<div class="flow-kicker">${kicker}</div><h2 id="guidedTitle">${title}</h2>${text?`<p class="flow-copy">${text}</p>`:''}`; }
+
+function onboardingSeed(editing=false) {
+  const s=latestStrength();
+  if(editing) return {
+    name:state.profile.name||'', age:state.profile.age||30, sex:state.profile.sex||'m', height:state.profile.height||175,
+    weight:latestWeight()||state.profile.startWeight||75, priority:state.profile.priority||'strength', goalMode:state.profile.goalMode||'recomp',
+    pullups:+s.pullups||0,dips:+s.dips||0,pushups:+s.pushups||0,handstand:+s.handstand||0,
+    trainingDays:+state.profile.trainingDays||3,bands:[...(state.profile.bands||[])],activity:state.profile.activity||'mixed',
+    sleep:+parseFloat(state.profile.sleepBaseline)||7, halal:!!state.profile.diet?.halal,lactoseFree:!!state.profile.diet?.lactoseFree,vegetarian:!!state.profile.diet?.vegetarian
+  };
+  return {name:'',age:30,sex:'m',height:175,weight:75,priority:'strength',goalMode:'recomp',pullups:0,dips:0,pushups:0,handstand:0,trainingDays:3,bands:[10,20,30],activity:'mixed',sleep:7,halal:false,lactoseFree:false,vegetarian:false};
+}
+
+function startOnboarding(editing=false) {
+  guidedFlow={type:'onboarding',step:0,data:onboardingSeed(editing),pending:null,editing};
+  showGuidedOverlay(); renderOnboarding();
+}
+
+function renderOnboarding() {
+  const d=guidedFlow.data, step=guidedFlow.step, total=9;
+  setFlowChrome({back:step>0,close:guidedFlow.editing,progress:(step/total)*100});
+  if(step===0){
+    flowBody(`<div class="flow-center">${flowHeader('Willkommen','Dein Coach startet bei null','Einmal kurz einrichten. Danach führt dich die App jeden Tag Schritt für Schritt durch Check, Training und Essen.')}<div class="flow-feature-list"><span>✓ persönlicher Trainingsstart</span><span>✓ eigene Kalorien- & Proteinziele</span><span>✓ Daten bleiben nur auf diesem Gerät</span></div><button id="flowNext" class="primary full" type="button">Los geht’s</button></div>`);
+    document.getElementById('flowNext').onclick=()=>{guidedFlow.step++;renderOnboarding();}; return;
+  }
+  if(step===1){
+    flowBody(`${flowHeader('1 von 8','Wie soll ich dich nennen?','Nur für die Ansprache in deiner App.')}<label class="flow-label">Name<input id="flowName" class="flow-input" value="${d.name||''}" placeholder="z. B. Ali"></label><button id="flowNext" class="primary full" type="button">Weiter</button>`);
+    document.getElementById('flowNext').onclick=()=>{d.name=document.getElementById('flowName').value.trim()||'Athlet';guidedFlow.step++;renderOnboarding();}; return;
+  }
+  if(step===2){
+    flowBody(`${flowHeader('2 von 8','Deine Basisdaten','Damit Ernährung und Belastung nicht pauschal für alle gleich sind.')}<div class="flow-grid"><label class="flow-label">Alter<input id="flowAge" class="flow-input" type="number" min="18" max="90" value="${d.age}"></label><label class="flow-label">Größe cm<input id="flowHeight" class="flow-input" type="number" min="140" max="220" value="${d.height}"></label><label class="flow-label">Gewicht kg<input id="flowWeight" class="flow-input" type="number" min="40" max="250" step="0.1" value="${d.weight}"></label></div><div class="flow-question">Geschlecht für die Kalorien-Schätzung</div><div class="flow-options two">${optionButton('m','Männlich')}${optionButton('f','Weiblich')}</div><button id="flowNext" class="primary full" type="button">Weiter</button>`);
+    document.querySelectorAll('[data-flow-value]').forEach(b=>{if(b.dataset.flowValue===d.sex)b.classList.add('selected');b.onclick=()=>{d.sex=b.dataset.flowValue;document.querySelectorAll('[data-flow-value]').forEach(x=>x.classList.toggle('selected',x===b));};});
+    document.getElementById('flowNext').onclick=()=>{d.age=+document.getElementById('flowAge').value||30;d.height=+document.getElementById('flowHeight').value||175;d.weight=+document.getElementById('flowWeight').value||75;guidedFlow.step++;renderOnboarding();};return;
+  }
+  if(step===3){
+    flowBody(`${flowHeader('3 von 8','Was ist gerade dein Hauptziel?','Du kannst später alles ändern. Der Startpunkt bestimmt vor allem Kalorien und Prioritäten.')}<div class="flow-options">${optionButton('cut','Leaner / shredded','Fett runter, Kraft halten/steigern')}${optionButton('recomp','Stärker + gleichzeitig leaner','langsamer, sehr alltagstauglich')}${optionButton('gain','Muskeln & Kraft aufbauen','kleiner kontrollierter Überschuss')}</div><div class="flow-question">Was ist dir am wichtigsten?</div><div class="flow-options two compact">${optionButton('strength','Kraft')}${optionButton('muscle','Muskeln')}${optionButton('skills','Skills')}${optionButton('look','Optik')}</div><button id="flowNext" class="primary full" type="button">Weiter</button>`);
+    document.querySelectorAll('[data-flow-value]').forEach(b=>{const v=b.dataset.flowValue;if(v===d.goalMode||v===d.priority)b.classList.add('selected');b.onclick=()=>{if(['cut','recomp','gain'].includes(v)){d.goalMode=v;document.querySelectorAll('[data-flow-value="cut"],[data-flow-value="recomp"],[data-flow-value="gain"]').forEach(x=>x.classList.toggle('selected',x===b));}else{d.priority=v;document.querySelectorAll('[data-flow-value="strength"],[data-flow-value="muscle"],[data-flow-value="skills"],[data-flow-value="look"]').forEach(x=>x.classList.toggle('selected',x===b));}};});
+    document.getElementById('flowNext').onclick=()=>{guidedFlow.step++;renderOnboarding();};return;
+  }
+  if(step===4){
+    flowBody(`${flowHeader('4 von 8','Wo stehst du heute?','Nur saubere Wiederholungen zählen. Wenn du etwas noch nie probiert hast: 0.')}<div class="flow-grid"><label class="flow-label">Pull-ups<input id="flowPull" class="flow-input" type="number" min="0" value="${d.pullups}"></label><label class="flow-label">Dips<input id="flowDips" class="flow-input" type="number" min="0" value="${d.dips}"></label><label class="flow-label">Push-ups<input id="flowPush" class="flow-input" type="number" min="0" value="${d.pushups}"></label><label class="flow-label">Freier Handstand s<input id="flowHs" class="flow-input" type="number" min="0" value="${d.handstand}"></label></div><button id="flowNext" class="primary full" type="button">Weiter</button>`);
+    document.getElementById('flowNext').onclick=()=>{d.pullups=+document.getElementById('flowPull').value||0;d.dips=+document.getElementById('flowDips').value||0;d.pushups=+document.getElementById('flowPush').value||0;d.handstand=+document.getElementById('flowHs').value||0;guidedFlow.step++;renderOnboarding();};return;
+  }
+  if(step===5){
+    flowBody(`${flowHeader('5 von 8','Wie kannst du trainieren?','Der Plan bleibt simpel: zwei Haupttage, ein optionaler dritter Tag.')}<div class="flow-question">Realistische Krafttage pro Woche</div><div class="flow-options two">${optionButton('2','2 Tage','Haupttage')}${optionButton('3','3 Tage','+ optionaler Volumentag')}</div><div class="flow-question">Welche Pull-up-Bänder hast du?</div><div class="flow-checks"><label><input type="checkbox" value="10" ${d.bands.includes(10)?'checked':''}>10 kg</label><label><input type="checkbox" value="20" ${d.bands.includes(20)?'checked':''}>20 kg</label><label><input type="checkbox" value="30" ${d.bands.includes(30)?'checked':''}>30 kg</label></div><p class="flow-note">Keine Bänder? Kein Problem: Dann startet die App mit kontrollierten negativen Pull-ups.</p><button id="flowNext" class="primary full" type="button">Weiter</button>`);
+    document.querySelectorAll('[data-flow-value]').forEach(b=>{if(+b.dataset.flowValue===d.trainingDays)b.classList.add('selected');b.onclick=()=>{d.trainingDays=+b.dataset.flowValue;document.querySelectorAll('[data-flow-value]').forEach(x=>x.classList.toggle('selected',x===b));};});
+    document.getElementById('flowNext').onclick=()=>{d.bands=[...document.querySelectorAll('.flow-checks input:checked')].map(x=>+x.value);guidedFlow.step++;renderOnboarding();};return;
+  }
+  if(step===6){
+    flowBody(`${flowHeader('6 von 8','Dein Alltag & Schlaf','Das beeinflusst, wie aggressiv Training und Ernährung sein dürfen.')}<div class="flow-options">${optionButton('low','Eher sitzend','wenig Bewegung außerhalb Training')}${optionButton('mixed','Gemischt','Sitzen + Gehen / normal aktiv')}${optionButton('active','Sehr aktiv','körperliche Arbeit / viel Bewegung')}</div><label class="flow-label">Typischer Schlaf pro Nacht<input id="flowSleep" class="flow-input" type="number" min="3" max="10" step="0.5" value="${d.sleep}"></label><button id="flowNext" class="primary full" type="button">Weiter</button>`);
+    document.querySelectorAll('[data-flow-value]').forEach(b=>{if(b.dataset.flowValue===d.activity)b.classList.add('selected');b.onclick=()=>{d.activity=b.dataset.flowValue;document.querySelectorAll('[data-flow-value]').forEach(x=>x.classList.toggle('selected',x===b));};});
+    document.getElementById('flowNext').onclick=()=>{d.sleep=+document.getElementById('flowSleep').value||7;guidedFlow.step++;renderOnboarding();};return;
+  }
+  if(step===7){
+    flowBody(`${flowHeader('7 von 8','Ernährung','Damit Vorschläge zu deinem Alltag passen.')}<div class="flow-checks vertical"><label><input id="flowHalal" type="checkbox" ${d.halal?'checked':''}>Halal</label><label><input id="flowLactose" type="checkbox" ${d.lactoseFree?'checked':''}>Laktosefrei / Laktoseintoleranz</label><label><input id="flowVeg" type="checkbox" ${d.vegetarian?'checked':''}>Vegetarisch</label></div><button id="flowNext" class="primary full" type="button">Weiter</button>`);
+    document.getElementById('flowNext').onclick=()=>{d.halal=document.getElementById('flowHalal').checked;d.lactoseFree=document.getElementById('flowLactose').checked;d.vegetarian=document.getElementById('flowVeg').checked;guidedFlow.step++;renderOnboarding();};return;
+  }
+  const targets=calculateNutritionTargets({age:d.age,sex:d.sex,height:d.height,startWeight:d.weight,activity:d.activity,goalMode:d.goalMode});
+  flowBody(`${flowHeader('8 von 8','Dein Start ist bereit',`${d.name||'Athlet'}, daraus baut die App deinen persönlichen Startpunkt.`)}<div class="flow-summary"><div><span>Kalorien</span><b>${targets.calories} kcal</b></div><div><span>Protein</span><b>${targets.protein} g</b></div><div><span>Pull-ups</span><b>${d.pullups}</b></div><div><span>Training</span><b>${d.trainingDays} Tage</b></div></div><p class="flow-note">Das sind Startwerte, keine ewigen Regeln. Gewichtstrend, Leistung und Recovery entscheiden später über Anpassungen.</p><button id="flowSaveProfile" class="primary full" type="button">Profil speichern & Tagescheck starten</button>`);
+  document.getElementById('flowSaveProfile').onclick=()=>saveOnboardingProfile(targets);
+}
+
+function saveOnboardingProfile(targets) {
+  const d=guidedFlow.data;
+  const priorityLabel={strength:'Kraft',muscle:'Muskeln',skills:'Skills',look:'Optik'}[d.priority]||'Kraft';
+  state.profile={...state.profile,onboardingComplete:true,name:d.name||'Athlet',age:d.age,sex:d.sex,height:d.height,startWeight:d.weight,bands:d.bands,sleepBaseline:String(d.sleep),activity:d.activity,goalMode:d.goalMode,trainingDays:d.trainingDays,priority:d.priority,diet:{halal:d.halal,lactoseFree:d.lactoseFree,vegetarian:d.vegetarian},goal:`${priorityLabel} → Skills → langfristig athletisch`};
+  state.settings={...state.settings,...targets,vacation:false};
+  const test={date:localDateKey(),pullups:d.pullups,dips:d.dips,pushups:d.pushups,handstand:d.handstand,hang:0,hspu:0};
+  state.strengthTests=state.strengthTests.filter(x=>x.date!==test.date); state.strengthTests.push(test);
+  state.daily[localDateKey()]={...(state.daily[localDateKey()]||{}),weight:d.weight};
+  saveState(false); renderAll();
+  guidedFlow={type:null,step:0,data:{},pending:null,editing:false};
+  startDailyCheck();
+}
+
+function startDailyCheck(pending=null) {
+  const old=state.daily[localDateKey()]||{};
+  guidedFlow={type:'daily',step:0,data:{sleep:old.sleep??'',energy:old.energy??3,elbow:old.elbow??0,shoulder:old.shoulder??0,weight:old.weight??latestWeight()??'',creatine:!!old.creatine},pending,editing:false};
+  showGuidedOverlay(); renderDailyFlow();
+}
+
+function renderDailyFlow() {
+  const d=guidedFlow.data, step=guidedFlow.step, total=6;
+  setFlowChrome({back:step>0&&step<5,close:dailyCheckComplete()&&step<5,progress:(step/5)*100});
+  if(step===0){flowBody(`${flowHeader('Tagescheck 1/5','Wie viel hast du geschlafen?','Das entscheidet heute über Normal, Light oder Reduced.')}<label class="flow-label">Stunden<input id="dailySleepFlow" class="flow-input flow-big-input" type="number" min="2" max="12" step="0.1" inputmode="decimal" value="${d.sleep}"></label><button id="flowNext" class="primary full" type="button">Weiter</button>`);document.getElementById('flowNext').onclick=()=>{const v=+document.getElementById('dailySleepFlow').value;if(!v)return;d.sleep=v;guidedFlow.step++;renderDailyFlow();};return;}
+  if(step===1){flowBody(`${flowHeader('Tagescheck 2/5','Wie ist deine Energie?','Nicht Motivation – wie leistungsfähig fühlst du dich körperlich?')}<div class="flow-energy">${[1,2,3,4,5].map(v=>optionButton(v,String(v),v===1?'leer':v===3?'normal':v===5?'sehr fit':'')).join('')}</div>`);document.querySelectorAll('[data-flow-value]').forEach(b=>{if(+b.dataset.flowValue===+d.energy)b.classList.add('selected');b.onclick=()=>{d.energy=+b.dataset.flowValue;guidedFlow.step++;renderDailyFlow();};});return;}
+  if(step===2){flowBody(`${flowHeader('Tagescheck 3/5','Ellenbogen heute?','0 = nichts. 10 = sehr starker Schmerz.')}<input id="dailyElbowFlow" class="flow-range" type="range" min="0" max="10" step="1" value="${d.elbow}"><div class="flow-range-value"><b id="dailyElbowValue">${d.elbow}</b><span>/ 10</span></div><button id="flowNext" class="primary full" type="button">Weiter</button>`);const r=document.getElementById('dailyElbowFlow');r.oninput=()=>document.getElementById('dailyElbowValue').textContent=r.value;document.getElementById('flowNext').onclick=()=>{d.elbow=+r.value;guidedFlow.step++;renderDailyFlow();};return;}
+  if(step===3){flowBody(`${flowHeader('Tagescheck 4/5','Schulter heute?','0 = nichts. Bei deutlicherem Schmerz reduziert die App automatisch.')}<input id="dailyShoulderFlow" class="flow-range" type="range" min="0" max="10" step="1" value="${d.shoulder}"><div class="flow-range-value"><b id="dailyShoulderValue">${d.shoulder}</b><span>/ 10</span></div><button id="flowNext" class="primary full" type="button">Weiter</button>`);const r=document.getElementById('dailyShoulderFlow');r.oninput=()=>document.getElementById('dailyShoulderValue').textContent=r.value;document.getElementById('flowNext').onclick=()=>{d.shoulder=+r.value;guidedFlow.step++;renderDailyFlow();};return;}
+  if(step===4){flowBody(`${flowHeader('Tagescheck 5/5','Noch zwei schnelle Dinge','Gewicht ist fürs Trendtracking. Wenn du heute nicht wiegen kannst, lass es leer.')}<label class="flow-label">Gewicht kg<input id="dailyWeightFlow" class="flow-input" type="number" step="0.1" inputmode="decimal" value="${d.weight||''}" placeholder="optional"></label><label class="flow-check-single"><input id="dailyCreatineFlow" type="checkbox" ${d.creatine?'checked':''}>5 g Creatin heute genommen</label><button id="flowNext" class="primary full" type="button">Check auswerten</button>`);document.getElementById('flowNext').onclick=()=>{const w=document.getElementById('dailyWeightFlow').value;d.weight=w===''?null:+w;d.creatine=document.getElementById('dailyCreatineFlow').checked;const key=localDateKey();state.daily[key]={...(state.daily[key]||{}),sleep:d.sleep,energy:d.energy,elbow:d.elbow,shoulder:d.shoulder,weight:d.weight,creatine:d.creatine};saveState(false);renderAllDerived();guidedFlow.step++;renderDailyFlow();};return;}
+  const rec=recoveryDecision(); const plan=planForDate();
+  const modeTitle=rec.mode==='NORMAL'?'Du kannst normal trainieren':rec.mode==='LIGHT'?'Heute etwas leichter':rec.mode==='REDUCED'?'Heute deutlich reduzieren':rec.mode==='STOP'?'Heute kein schmerzhaftes Oberkörpertraining':'Check erledigt';
+  flowBody(`<div class="flow-center">${flowHeader('Check fertig',modeTitle,rec.text)}<div class="flow-recovery-badge ${rec.mode.toLowerCase()}">${rec.mode}<b>${rec.score??'–'}</b></div><div class="flow-next-card"><span>Heute geplant</span><b>${plan.title}</b><small>${plan.duration}</small></div><button id="flowFinishDaily" class="primary full" type="button">Weiter</button></div>`);
+  document.getElementById('flowFinishDaily').onclick=finishDailyFlow;
+}
+
+function finishDailyFlow() {
+  const pending=guidedFlow.pending; guidedFlow={type:null,step:0,data:{},pending:null,editing:false}; hideGuidedOverlay(); renderAll();
+  if(pending?.action==='todayWorkout'){startTodayWorkoutAfterCheck();return;}
+  if(pending?.action==='food'){startFoodFlow();return;}
+  if(pending?.view){switchView(pending.view,true);return;}
+  switchView('today',true);
+}
+
+function startTodayWorkoutAfterCheck() {
+  if(state.activeSession){selectedWorkout=state.activeSession.key;switchView('train',true);restoreActiveSession();renderTrainingOverview();return;}
+  const plan=planForDate(); if(plan.type!=='workout') return; if(workoutDoneDate(localDateKey(),plan.workout)) return;
+  selectedWorkout=plan.workout; switchView('train',true); startGuided(plan.workout);
+}
+
+function startFoodFlow() {
+  guidedFlow={type:'food',step:0,data:{foodId:null,amount:100,query:''},pending:null,editing:false};
+  showGuidedOverlay(); renderFoodFlow();
+}
+function renderFoodFlow() {
+  const d=guidedFlow.data;
+  setFlowChrome({back:guidedFlow.step===1,close:true,progress:guidedFlow.step===0?15:guidedFlow.step===1?55:100});
+  if(guidedFlow.step===0){
+    const totals=mealTotals();
+    flowBody(`${flowHeader('Essen eintragen','Was hast du gegessen?','Suche ein Lebensmittel. Danach frage ich nur noch die Menge.')}<div class="flow-today-macros"><span><b>${Math.round(totals.calories)}</b> / ${state.settings.calories} kcal</span><span><b>${Math.round(totals.protein)}</b> / ${state.settings.protein} g Protein</span></div><input id="guidedFoodSearch" class="flow-input" type="search" autocomplete="off" placeholder="z. B. Hähnchen, Reis, Ei …"><div id="guidedFoodResults" class="flow-food-results"></div>`);
+    const input=document.getElementById('guidedFoodSearch'); const results=document.getElementById('guidedFoodResults');
+    const draw=(q='')=>{results.innerHTML=foodSearch(q).slice(0,8).map(f=>`<button type="button" class="flow-food-result" data-food-id="${f.id}"><span><b>${f.name}</b><small>${f.kcal} kcal · ${f.p} g P / 100 ${f.unit||'g'}</small></span><i>+</i></button>`).join('');results.querySelectorAll('[data-food-id]').forEach(b=>b.onclick=()=>{d.foodId=b.dataset.foodId;const food=FOOD_DB.find(x=>x.id===d.foodId);d.amount=food?.portion||100;guidedFlow.step=1;renderFoodFlow();});};
+    input.oninput=()=>draw(input.value);draw('');return;
+  }
+  if(guidedFlow.step===1){
+    const food=FOOD_DB.find(x=>x.id===d.foodId); if(!food){guidedFlow.step=0;renderFoodFlow();return;}
+    const macros=foodMacros(food,d.amount);
+    const quick=[50,100,food.portion||100,200,250].filter((v,i,a)=>v>0&&a.indexOf(v)===i).slice(0,4);
+    flowBody(`${flowHeader('Menge','Wie viel davon?',food.name)}<div class="flow-food-picked"><b>${food.name}</b><small>100 ${food.unit||'g'} = ${food.kcal} kcal · ${food.p} g Protein</small></div><label class="flow-label">Menge<div class="flow-amount"><input id="guidedFoodAmount" class="flow-input flow-big-input" type="number" min="1" value="${d.amount}"><span>${food.unit||'g'}</span></div></label><div class="chip-row">${quick.map(v=>`<button type="button" data-guided-amount="${v}">${v} ${food.unit||'g'}</button>`).join('')}</div><div class="flow-macro-preview"><b id="guidedMacroKcal">${macros.cal} kcal</b><span id="guidedMacroText">${macros.protein} g P · ${macros.carbs} g KH · ${macros.fat} g Fett</span></div><button id="guidedAddFood" class="primary full" type="button">Hinzufügen</button>`);
+    const amount=document.getElementById('guidedFoodAmount'); const update=()=>{d.amount=+amount.value||0;const m=foodMacros(food,d.amount);document.getElementById('guidedMacroKcal').textContent=`${m.cal} kcal`;document.getElementById('guidedMacroText').textContent=`${m.protein} g P · ${m.carbs} g KH · ${m.fat} g Fett`;}; amount.oninput=update;document.querySelectorAll('[data-guided-amount]').forEach(b=>b.onclick=()=>{amount.value=b.dataset.guidedAmount;update();});
+    document.getElementById('guidedAddFood').onclick=()=>{if(d.amount<=0)return;addFoodEntry(food,d.amount);guidedFlow.step=2;renderFoodFlow();};return;
+  }
+  const totals=mealTotals(); const analysis=foodCoachAnalysis(totals);
+  flowBody(`<div class="flow-center">${flowHeader('Gespeichert',analysis.title,analysis.text)}<div class="flow-summary"><div><span>Heute kcal</span><b>${Math.round(totals.calories)} / ${state.settings.calories}</b></div><div><span>Protein</span><b>${Math.round(totals.protein)} / ${state.settings.protein} g</b></div><div><span>KH</span><b>${Math.round(totals.carbs)} g</b></div><div><span>Fett</span><b>${Math.round(totals.fat)} g</b></div></div><div class="flow-actions"><button id="flowFoodMore" class="secondary" type="button">Noch etwas</button><button id="flowFoodDone" class="primary" type="button">Fertig</button></div></div>`);
+  document.getElementById('flowFoodMore').onclick=()=>{guidedFlow.step=0;guidedFlow.data={foodId:null,amount:100,query:''};renderFoodFlow();};
+  document.getElementById('flowFoodDone').onclick=()=>{hideGuidedOverlay();guidedFlow={type:null,step:0,data:{},pending:null,editing:false};switchView('food',true);};
+}
+
+function renderProfileSettings() {
+  const p=state.profile||{}, diet=[];
+  if(p.diet?.halal) diet.push('halal'); if(p.diet?.lactoseFree) diet.push('laktosefrei'); if(p.diet?.vegetarian) diet.push('vegetarisch');
+  const goalMode={cut:'Cut / leaner',recomp:'Recomp',gain:'Aufbau'}[p.goalMode]||'Recomp';
+  const set=(id,val)=>{const e=document.getElementById(id);if(e)e.textContent=val;};
+  set('settingCalories',`${state.settings.calories} kcal`);set('settingProtein',`${state.settings.protein}+ g`);set('settingCreatine',`${state.settings.creatine||5} g täglich`);
+  set('settingBands',(p.bands||[]).length?(p.bands||[]).join(' · ')+' kg':'keine · Negative Pull-ups');set('settingTrainingDays',`${p.trainingDays||3} Tage / Woche`);set('settingSleep',`${p.sleepBaseline||'–'} h`);
+  set('profileSummary',`${p.age||'–'} · ${p.sex==='f'?'weiblich':'männlich'} · ${p.height||'–'} cm`);set('profileStart',`${fmt(latestWeight())} kg`);set('profileGoal',p.goal||'Kraft & Skills');set('profileDiet',diet.join(' · ')||'keine Vorgaben');set('profilePhase',goalMode);
+  set('roadmapSleepText',`Typischer Schlaf ${p.sleepBaseline||'–'} h: Volumen und Intensität werden über den täglichen Check angepasst.`);
+  set('todayCaloriesGoal',`/ ${state.settings.calories} kcal`);set('todayProteinGoal',`/ ${state.settings.protein} g Protein`);
+}
+
+function initGuidedExperience() {
+  document.getElementById('guidedBack').onclick=()=>{
+    if(guidedFlow.type==='onboarding'&&guidedFlow.step>0){guidedFlow.step--;renderOnboarding();}
+    else if(guidedFlow.type==='daily'&&guidedFlow.step>0&&guidedFlow.step<5){guidedFlow.step--;renderDailyFlow();}
+    else if(guidedFlow.type==='food'&&guidedFlow.step===1){guidedFlow.step=0;renderFoodFlow();}
+  };
+  document.getElementById('guidedClose').onclick=()=>{if(guidedFlow.type==='onboarding'&&!guidedFlow.editing)return;hideGuidedOverlay();guidedFlow={type:null,step:0,data:{},pending:null,editing:false};};
+  document.getElementById('guidedCheckBtn').onclick=()=>startDailyCheck();
+  document.getElementById('guidedFoodBtn').onclick=()=>{if(!dailyCheckComplete())startDailyCheck({action:'food'});else startFoodFlow();};
+  document.getElementById('editProfileBtn').onclick=()=>startOnboarding(true);
+  document.getElementById('newProfileBtn').onclick=async()=>{if(confirm('Neues Profil starten? Alle Daten auf diesem Gerät werden gelöscht.')){try{await photoClear();}catch(e){}localStorage.removeItem(STORE_KEY);state=clone(defaultState);location.reload();}};
+  if(!state.profile?.onboardingComplete){startOnboarding(false);return;}
+  if(!dailyCheckComplete()) startDailyCheck();
+}
+
 renderAll();
+initGuidedExperience();

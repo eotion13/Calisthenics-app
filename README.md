@@ -1,10 +1,20 @@
-# Calisthenics Coach V3.1
+# Calisthenics Coach V4 Guided
 
-Mobile-first Fix/Polish-Version.
+V4 macht die App konsequent geführt.
 
-- Food-Screen HTML-Fehler behoben
-- horizontales Überlaufen auf iPhone behoben
-- Übungsbilder direkt in die App eingebettet, damit sie auf GitHub Pages nicht mehr als kaputte Bilder erscheinen
-- Food-Suche zeigt erst Treffer, wenn wirklich gesucht wird
-- cleaner, kompakter Mobile-Look
-- bestehende Trainings-, Ernährungs- und Tracking-Logik bleibt erhalten
+## Neue Nutzer
+
+Auf einem neuen Gerät/Browser startet zuerst ein persönliches Onboarding. Abgefragt werden Basisdaten, Ziel, aktuelles Kraftniveau, Trainingshäufigkeit, Bänder, Alltag/Schlaf und Ernährung. Daraus werden Startwerte für Kalorien und Protein berechnet.
+
+Jeder Browser speichert sein eigenes Profil lokal. Wenn du den GitHub-Pages-Link teilst, sieht die andere Person **nicht deine Daten**, sondern startet mit einem neuen Profil.
+
+## Täglicher Ablauf
+
+1. Tagescheck: Schlaf → Energie → Ellenbogen → Schulter → Gewicht/Creatin
+2. automatische Recovery-Einstufung: NORMAL / LIGHT / REDUCED / STOP
+3. Training geführt, Satz für Satz, oder Tagesplan/Regeneration
+4. Essen geführt: Lebensmittel → Menge → automatische Makros → direkte Empfehlung
+
+## GitHub Pages
+
+Alle Dateien und Ordner direkt in den Root des Repositories hochladen. Bestehende lokale Daten der bisherigen App bleiben auf demselben Gerät erhalten.
