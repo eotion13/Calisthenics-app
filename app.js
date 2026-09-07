@@ -1,9 +1,9 @@
 'use strict';
 
 const STORE_KEY = 'calisthenicsCoach_v2'; // bewusst gleich: V2-Daten bleiben erhalten
-const VERSION = '4.2.0';
+const VERSION = '4.2.2';
 const GEMINI_KEY_STORE = 'calisthenicsCoach_geminiKey_v1';
-const GEMINI_MODEL = 'gemini-2.5-flash-lite';
+const GEMINI_MODEL = 'gemini-3.5-flash-lite';
 
 const pad = n => String(n).padStart(2, '0');
 const localDateKey = (date = new Date()) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
@@ -330,6 +330,30 @@ function workoutDoneDate(key, workoutKey) {
   return sessions().some(s => s.date === key && (!workoutKey || s.key === workoutKey));
 }
 
+function activeSessionLooksComplete(a = state.activeSession) {
+  if (!a?.key) return false;
+  const wt = workoutTemplate(a.key, a.date || localDateKey());
+  return wt.items.every(item => {
+    const log = a.logs?.[item.id];
+    if (item.special) return !!log?.done;
+    return (log?.sets?.length || 0) >= (item.sets || 0);
+  });
+}
+
+function clearStaleActiveSession() {
+  const a = state.activeSession;
+  if (!a) return false;
+  // A completed-looking active session should never keep the other workouts locked.
+  // This can happen after testing/deleting a completed workout or after an old app version left stale state behind.
+  if (activeSessionLooksComplete(a)) {
+    delete state.activeSession;
+    if (guided && guided.key === a.key && guided.date === a.date) guided = null;
+    localStorage.setItem(STORE_KEY, JSON.stringify(state));
+    return true;
+  }
+  return false;
+}
+
 
 function previousExerciseLog(exerciseId, workoutKey = null) {
   const all = sessions().slice().sort((a,b) => {
@@ -424,14 +448,19 @@ function renderTrainingHistory() {
   if(!list.length){root.innerHTML='<p class="muted">Noch kein abgeschlossenes Training. Deine erste Einheit erscheint danach automatisch hier.</p>';return;}
   root.innerHTML=list.map(s=>{
     const wt=workoutTemplate(s.key,s.date); const entries=wt.items.filter(item=>s.logs?.[item.id]);
-    return `<details class="history-session"><summary><span><b>${deDateLong(s.date)}</b><small>${wt.label}${s.startedAt?` · ${s.startedAt}`:''}</small></span><span class="history-chevron">›</span></summary><div class="history-exercises">${entries.map(item=>{const log=s.logs[item.id]; if(item.special)return `<div class="history-exercise"><b>${EX[item.id].name}</b><span>erledigt ✓</span></div>`; return `<div class="history-exercise"><b>${EX[item.id].name}</b><div class="history-set-list">${(log.sets||[]).map((set,i)=>`<span>S${i+1}: ${setDisplay(set,item)}</span>`).join('')}</div></div>`}).join('')}</div><div class="history-actions"><button class="small-btn danger" data-delete-workout="${s.id||''}" data-delete-date="${s.date}" type="button">Training löschen</button></div></details>`;
+    return `<details class="history-session"><summary><span><b>${deDateLong(s.date)}</b><small>${wt.label}${s.startedAt?` · ${s.startedAt}`:''}</small></span><span class="history-chevron">›</span></summary><div class="history-exercises">${entries.map(item=>{const log=s.logs[item.id]; if(item.special)return `<div class="history-exercise"><b>${EX[item.id].name}</b><span>erledigt ✓</span></div>`; return `<div class="history-exercise"><b>${EX[item.id].name}</b><div class="history-set-list">${(log.sets||[]).map((set,i)=>`<span>S${i+1}: ${setDisplay(set,item)}</span>`).join('')}</div></div>`}).join('')}</div><div class="history-actions"><button class="small-btn danger" data-delete-workout="${s.id||''}" data-delete-date="${s.date}" data-delete-key="${s.key}" type="button">Training löschen</button></div></details>`;
   }).join('');
   root.querySelectorAll('[data-delete-workout]').forEach(btn=>btn.onclick=e=>{
     e.preventDefault(); e.stopPropagation(); if(!confirm('Dieses absolvierte Training wirklich löschen?'))return;
-    const date=btn.dataset.deleteDate,id=btn.dataset.deleteWorkout; const val=state.workouts[date];
+    const date=btn.dataset.deleteDate,id=btn.dataset.deleteWorkout,key=btn.dataset.deleteKey; const val=state.workouts[date];
     if(Array.isArray(val)){const next=val.filter(x=>String(x.id||'')!==String(id)); if(next.length)state.workouts[date]=next;else delete state.workouts[date];}
     else if(!id||String(val?.id||'')===String(id)) delete state.workouts[date];
-    saveState(); renderTrainingHistory(); renderTrainingOverview();
+    // If an old/stale active copy of the deleted workout exists, remove it too.
+    if(state.activeSession && state.activeSession.date===date && state.activeSession.key===key){
+      delete state.activeSession;
+      if(guided && guided.date===date && guided.key===key) guided=null;
+    }
+    saveState(); renderWorkoutTabs(); renderTrainingHistory(); renderTrainingOverview(); renderDashboard();
   });
 }
 
@@ -903,6 +932,7 @@ let guided = null;
 let manualWorkoutMode = false;
 
 function renderWorkoutTabs() {
+  clearStaleActiveSession();
   const root = document.getElementById('workoutTabs');
   const activeKey = state.activeSession?.key || null;
   root.innerHTML = ['A','B','C'].map(k => {
@@ -1510,6 +1540,7 @@ function restoreActiveSession() {
 
 function renderAll() {
   migrateLegacyPhotos().then(()=>renderPhotos()).catch(()=>{});
+  clearStaleActiveSession();
   const todayPlan = planForDate();
   if (!state.activeSession && todayPlan.type === 'workout') selectedWorkout = todayPlan.workout;
   restoreActiveSession();
@@ -1543,7 +1574,7 @@ async function exportBackup() {
   try{photoBlobs=await photoGetAll();}catch(e){console.warn('Fotos konnten nicht ins Backup aufgenommen werden',e);}
   const backup={...state,photoBlobs};
   const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}),a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);a.download=`calisthenics-coach-v4.2-guided-ai-${localDateKey()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  a.href=URL.createObjectURL(blob);a.download=`calisthenics-coach-v4.2.2-guided-ai-${localDateKey()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 document.getElementById('exportBtn').onclick=exportBackup;
 document.getElementById('importFile').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;try{const raw=JSON.parse(await f.text());const blobs=Array.isArray(raw.photoBlobs)?raw.photoBlobs:[];delete raw.photoBlobs;state=migrate(raw);for(const rec of blobs){try{await photoPut(rec);}catch(err){console.warn(err);}}saveState();renderAll();alert('Backup importiert ✓');}catch(err){console.error(err);alert('Backup konnte nicht gelesen werden.');}};
@@ -1841,24 +1872,32 @@ async function geminiGenerate(prompt, {timeoutMs=20000}={}) {
   const controller = new AbortController();
   const timer = setTimeout(()=>controller.abort(), timeoutMs);
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`, {
+    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
       method:'POST',
       headers:{'Content-Type':'application/json','x-goog-api-key':key},
       signal:controller.signal,
       body:JSON.stringify({
-        contents:[{role:'user',parts:[{text:prompt}]}],
-        generationConfig:{temperature:0.35,maxOutputTokens:500,thinkingConfig:{thinkingBudget:0}}
+        model:GEMINI_MODEL,
+        input:prompt,
+        store:false,
+        generation_config:{temperature:0.35,max_output_tokens:500}
       })
     });
     const data = await res.json().catch(()=>({}));
     if (!res.ok) {
-      const msg = data?.error?.message || `Gemini Fehler ${res.status}`;
+      const msg = data?.error?.message || data?.errors?.[0]?.message || `Gemini Fehler ${res.status}`;
       if (res.status === 429) throw new Error('Kostenloses Gemini-Limit gerade erreicht. Später erneut versuchen.');
-      if ([401,403].includes(res.status)) throw new Error('API-Key wurde abgelehnt. Prüfe den Key in Google AI Studio.');
+      if ([401,403].includes(res.status) || /api[- ]?key/i.test(msg)) throw new Error('API-Key wurde abgelehnt. Prüfe den Key in Google AI Studio.');
       throw new Error(msg);
     }
-    const answer = (data.candidates?.[0]?.content?.parts || []).map(p=>p.text || '').join('\n').trim();
-    if (!answer) throw new Error('Gemini hat keine Textantwort geliefert.');
+    const answer = (data.steps || [])
+      .filter(step=>step?.type==='model_output')
+      .flatMap(step=>step.content || [])
+      .filter(part=>part?.type==='text' && part.text)
+      .map(part=>part.text)
+      .join('\n')
+      .trim();
+    if (!answer) throw new Error(data?.errors?.[0]?.message || 'Gemini hat keine Textantwort geliefert.');
     return answer;
   } catch (err) {
     if (err?.name === 'AbortError') throw new Error('Gemini antwortet gerade zu langsam. Bitte erneut versuchen.');
