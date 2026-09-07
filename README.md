@@ -1,17 +1,17 @@
-# Calisthenics Coach V4.1 Guided
+# Calisthenics Coach V4.2 Guided AI
 
-Geführte PWA mit Onboarding, Tagescheck, Satz-für-Satz-Training, Food Tracker und Statistik.
+V4.2 ergänzt den geführten Coach um eine optionale Gemini-KI mit Bring-your-own-key.
 
-## Neu in V4.1
+## Neu
+- eigener Gemini API-Key pro Nutzer unter **Mehr → KI Coach**
+- Key bleibt nur auf dem jeweiligen Gerät und wird nicht in Backups exportiert
+- Verbindungstest und Key löschen
+- KI-Schnellfragen: Tagescheck, letztes Training, heutige Ernährung
+- freie Coach-Frage mit den relevanten lokalen App-Daten als Kontext
+- Standardmodell: `gemini-2.5-flash-lite`
 
-- im laufenden Training **zurück zu vorherigen Übungen**
-- bereits eingetragene Sätze **antippen, ändern oder löschen**
-- Training beim Verlassen **nicht verlieren**, sondern später fortsetzen
-- pro Übung direkt **„Letztes Mal“** mit allen Satzwerten anzeigen
-- jeder neue Satz zeigt direkt **besser / gleich / schlechter** zum entsprechenden Satz des letzten Trainings
-- **Vergangene Trainings** im Training-Tab mit allen Übungen und Sätzen einsehbar
-- absolvierte Trainings können bei Bedarf gelöscht werden
+## Sicherheit
+Die App ist statisch auf GitHub Pages. Der vom Nutzer eingegebene Key wird deshalb clientseitig verwendet. Das ist für BYOK bequem, aber weniger sicher als ein Backend. Google empfiehlt für produktive Apps einen Backend-Proxy.
 
 ## GitHub Pages
-
-Den kompletten Inhalt dieser ZIP direkt in den Root des GitHub-Repositories hochladen. `index.html` muss direkt im Hauptordner liegen.
+Alle Dateien direkt in den Root des Repositories hochladen.

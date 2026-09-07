@@ -1,7 +1,9 @@
 'use strict';
 
 const STORE_KEY = 'calisthenicsCoach_v2'; // bewusst gleich: V2-Daten bleiben erhalten
-const VERSION = '4.1.0';
+const VERSION = '4.2.0';
+const GEMINI_KEY_STORE = 'calisthenicsCoach_geminiKey_v1';
+const GEMINI_MODEL = 'gemini-2.5-flash-lite';
 
 const pad = n => String(n).padStart(2, '0');
 const localDateKey = (date = new Date()) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
@@ -1487,7 +1489,7 @@ function renderCreatineStreak() {
 }
 
 function renderAllDerived() {
-  renderDashboard(); renderMeals(); renderVacation(); renderStats(); renderSkills(); renderRoadmap(); renderPhotos(); renderProfileSettings(); renderTrainingHistory();
+  renderDashboard(); renderMeals(); renderVacation(); renderStats(); renderSkills(); renderRoadmap(); renderPhotos(); renderProfileSettings(); renderTrainingHistory(); renderGeminiUI();
 }
 function restoreActiveSession() {
   if (!state.activeSession) return false;
@@ -1541,11 +1543,11 @@ async function exportBackup() {
   try{photoBlobs=await photoGetAll();}catch(e){console.warn('Fotos konnten nicht ins Backup aufgenommen werden',e);}
   const backup={...state,photoBlobs};
   const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}),a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);a.download=`calisthenics-coach-v4.1-guided-${localDateKey()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  a.href=URL.createObjectURL(blob);a.download=`calisthenics-coach-v4.2-guided-ai-${localDateKey()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 document.getElementById('exportBtn').onclick=exportBackup;
 document.getElementById('importFile').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;try{const raw=JSON.parse(await f.text());const blobs=Array.isArray(raw.photoBlobs)?raw.photoBlobs:[];delete raw.photoBlobs;state=migrate(raw);for(const rec of blobs){try{await photoPut(rec);}catch(err){console.warn(err);}}saveState();renderAll();alert('Backup importiert ✓');}catch(err){console.error(err);alert('Backup konnte nicht gelesen werden.');}};
-document.getElementById('resetBtn').onclick=async()=>{if(confirm('Wirklich ALLE lokalen App-Daten inklusive Fotos löschen?')){try{await photoClear();}catch(e){}localStorage.removeItem(STORE_KEY);state=clone(defaultState);saveState(false);location.reload();}};
+document.getElementById('resetBtn').onclick=async()=>{if(confirm('Wirklich ALLE lokalen App-Daten inklusive Fotos löschen?')){try{await photoClear();}catch(e){}localStorage.removeItem(STORE_KEY);localStorage.removeItem(GEMINI_KEY_STORE);state=clone(defaultState);saveState(false);location.reload();}};
 
 let deferredPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;document.getElementById('installBtn').classList.remove('hidden');});
@@ -1759,3 +1761,161 @@ function initGuidedExperience() {
 
 renderAll();
 initGuidedExperience();
+
+
+// ---------- V4.2 Bring-your-own Gemini AI ----------
+function geminiKey() { return (localStorage.getItem(GEMINI_KEY_STORE) || '').trim(); }
+function hasGeminiKey() { return geminiKey().length >= 20; }
+function escapeHTML(value='') { return String(value).replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch])); }
+
+function renderGeminiUI() {
+  const connected = hasGeminiKey();
+  const input = document.getElementById('geminiApiKey');
+  if (input && document.activeElement !== input) input.value = connected ? geminiKey() : '';
+  const badge = document.getElementById('geminiConnectionBadge');
+  if (badge) { badge.textContent = connected ? 'BEREIT' : 'NICHT VERBUNDEN'; badge.className = `mode-badge ${connected ? '' : 'light'}`; }
+  const coachBadge = document.getElementById('aiCoachStatus');
+  if (coachBadge) { coachBadge.textContent = connected ? 'BEREIT' : 'AUS'; coachBadge.className = `mode-badge ${connected ? '' : 'light'}`; }
+  const hint = document.getElementById('aiCoachHint');
+  if (hint) hint.textContent = connected
+    ? 'Gemini ist bereit. Die KI bekommt nur die Daten, die für deine jeweilige Frage relevant sind.'
+    : 'Optional: Hinterlege unter Mehr deinen eigenen Gemini-Key. Ohne Key funktioniert die App vollständig weiter.';
+}
+
+function lastCompletedWorkout() {
+  return sessions().slice().sort((a,b)=>`${b.date}-${b.finishedAt||''}-${b.id||0}`.localeCompare(`${a.date}-${a.finishedAt||''}-${a.id||0}`))[0] || null;
+}
+
+function compactWorkoutForAI(session) {
+  if (!session) return null;
+  const wt = workoutTemplate(session.key, session.date);
+  return {
+    date: session.date,
+    workout: wt.label,
+    exercises: wt.items.filter(i=>session.logs?.[i.id]?.sets?.length).map(i=>({
+      exercise: EX[i.id]?.name || i.id,
+      sets: session.logs[i.id].sets.map(s=>({repsOrSeconds:s.value, load:s.load ?? null, rir:s.rir ?? null}))
+    }))
+  };
+}
+
+function aiContext(kind='custom', question='') {
+  const today = localDateKey();
+  const d = state.daily[today] || {};
+  const meals = mealTotals(today);
+  const plan = planForDate(today);
+  const recentWorkouts = sessions().slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3).map(compactWorkoutForAI);
+  const profile = state.profile || {};
+  return {
+    requestType: kind,
+    question,
+    date: today,
+    profile: {
+      age: profile.age, sex: profile.sex, heightCm: profile.height, currentWeightKg: latestWeight(),
+      goal: profile.goal, goalMode: profile.goalMode, activity: profile.activity, typicalSleep: profile.sleepBaseline,
+      dietary: { halal: !!profile.halal, lactoseFree: !!profile.lactoseFree, vegetarian: !!profile.vegetarian }
+    },
+    todayCheck: { sleepHours:d.sleep ?? null, energy:d.energy ?? null, elbowPain:d.elbow ?? null, shoulderPain:d.shoulder ?? null, weightKg:d.weight ?? null },
+    recovery: recoveryDecision(today),
+    todayPlan: plan,
+    nutrition: { eaten:meals, targets:state.settings },
+    strengthPRs: { pullups:maxStrength('pullups'), dips:maxStrength('dips'), pushups:maxStrength('pushups'), handstandSeconds:maxStrength('handstand'), deadHangSeconds:maxStrength('hang') },
+    recentWorkouts
+  };
+}
+
+function aiPrompt(kind, question='') {
+  const labels = {
+    today:'Bewerte den heutigen Tagescheck und sag mir, was ich heute beim Training oder bei der Regeneration beachten soll.',
+    training:'Bewerte mein letztes Training im Vergleich zu meinen bisherigen Werten. Nenne konkret 1–3 Dinge, die ich beim nächsten Training verbessern soll.',
+    food:'Sag mir anhand meiner heutigen Makros, was ich heute noch sinnvoll essen sollte. Priorisiere Protein und Kalorienziel und beachte meine Ernährungsangaben.',
+    custom: question || 'Gib mir eine kurze Coaching-Empfehlung.'
+  };
+  const ctx = aiContext(kind, question);
+  return `Du bist ein knapper, evidenzorientierter Calisthenics-Coach in einer Fitness-App. Antworte auf Deutsch.\n\nRegeln:\n- Maximal 5 kurze Punkte, keine langen Einleitungen.\n- Nutze ausschließlich die gelieferten Nutzerdaten; erfinde keine Messwerte.\n- Bei Schmerzen >=4/10 keine belastende Übung empfehlen; bei anhaltenden oder zunehmenden Beschwerden zur medizinischen Abklärung raten.\n- Keine Diagnose stellen.\n- Bei Ernährung konkrete einfache Vorschläge machen, aber keine exakten Nährwerte erfinden, wenn sie nicht in den Daten stehen.\n- Das Trainingsprogramm der App ist die Basis; ändere es nur, wenn Recovery/Schmerz eine Anpassung verlangt.\n\nAufgabe: ${labels[kind] || labels.custom}\n\nAPP-DATEN:\n${JSON.stringify(ctx)}`;
+}
+
+async function geminiGenerate(prompt, {timeoutMs=20000}={}) {
+  const key = geminiKey();
+  if (!key) throw new Error('Kein Gemini API-Key gespeichert.');
+  const controller = new AbortController();
+  const timer = setTimeout(()=>controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-goog-api-key':key},
+      signal:controller.signal,
+      body:JSON.stringify({
+        contents:[{role:'user',parts:[{text:prompt}]}],
+        generationConfig:{temperature:0.35,maxOutputTokens:500,thinkingConfig:{thinkingBudget:0}}
+      })
+    });
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok) {
+      const msg = data?.error?.message || `Gemini Fehler ${res.status}`;
+      if (res.status === 429) throw new Error('Kostenloses Gemini-Limit gerade erreicht. Später erneut versuchen.');
+      if ([401,403].includes(res.status)) throw new Error('API-Key wurde abgelehnt. Prüfe den Key in Google AI Studio.');
+      throw new Error(msg);
+    }
+    const answer = (data.candidates?.[0]?.content?.parts || []).map(p=>p.text || '').join('\n').trim();
+    if (!answer) throw new Error('Gemini hat keine Textantwort geliefert.');
+    return answer;
+  } catch (err) {
+    if (err?.name === 'AbortError') throw new Error('Gemini antwortet gerade zu langsam. Bitte erneut versuchen.');
+    throw err;
+  } finally { clearTimeout(timer); }
+}
+
+function showAIAnswer(message, type='answer') {
+  const box = document.getElementById('aiCoachAnswer');
+  if (!box) return;
+  box.classList.remove('hidden','error','loading');
+  if (type === 'loading') { box.classList.add('loading'); box.textContent = message; return; }
+  if (type === 'error') box.classList.add('error');
+  box.innerHTML = escapeHTML(message).replace(/\n/g,'<br>');
+}
+
+async function runCoachAI(kind='custom', question='') {
+  if (!hasGeminiKey()) {
+    showAIAnswer('Noch kein Gemini-Key gespeichert. Öffne Mehr → KI Coach und hinterlege deinen eigenen Key.', 'error');
+    return;
+  }
+  showAIAnswer('Coach denkt kurz nach …','loading');
+  try { showAIAnswer(await geminiGenerate(aiPrompt(kind, question))); }
+  catch (e) { showAIAnswer(e.message || 'KI-Anfrage fehlgeschlagen.', 'error'); }
+}
+
+function initGeminiControls() {
+  document.querySelectorAll('[data-ai-prompt]').forEach(btn=>btn.onclick=()=>runCoachAI(btn.dataset.aiPrompt));
+  document.getElementById('aiCoachAsk')?.addEventListener('click',()=>{
+    const q=document.getElementById('aiCoachQuestion')?.value.trim();
+    if(!q){document.getElementById('aiCoachQuestion')?.focus();return;}
+    runCoachAI('custom',q);
+  });
+  document.getElementById('toggleGeminiKey')?.addEventListener('click',()=>{
+    const input=document.getElementById('geminiApiKey'); if(!input)return;
+    input.type=input.type==='password'?'text':'password';
+    document.getElementById('toggleGeminiKey').textContent=input.type==='password'?'Anzeigen':'Verbergen';
+  });
+  document.getElementById('saveGeminiKey')?.addEventListener('click',()=>{
+    const input=document.getElementById('geminiApiKey'); const key=input?.value.trim()||'';
+    const msg=document.getElementById('geminiKeyMessage');
+    if(key.length<20){if(msg)msg.textContent='Der Key sieht zu kurz aus.';return;}
+    localStorage.setItem(GEMINI_KEY_STORE,key); if(msg)msg.textContent='Key nur auf diesem Gerät gespeichert ✓'; renderGeminiUI();
+  });
+  document.getElementById('deleteGeminiKey')?.addEventListener('click',()=>{
+    localStorage.removeItem(GEMINI_KEY_STORE); const input=document.getElementById('geminiApiKey'); if(input)input.value='';
+    const msg=document.getElementById('geminiKeyMessage'); if(msg)msg.textContent='Key gelöscht ✓'; renderGeminiUI();
+  });
+  document.getElementById('testGeminiKey')?.addEventListener('click',async()=>{
+    const input=document.getElementById('geminiApiKey'); const typed=input?.value.trim()||''; const msg=document.getElementById('geminiKeyMessage');
+    if(typed && typed!==geminiKey()) localStorage.setItem(GEMINI_KEY_STORE,typed);
+    if(!hasGeminiKey()){if(msg)msg.textContent='Bitte zuerst einen API-Key eintragen.';return;}
+    if(msg)msg.textContent='Verbindung wird getestet …';
+    try { await geminiGenerate('Antworte exakt mit: OK', {timeoutMs:15000}); if(msg)msg.textContent=`Verbunden ✓ · ${GEMINI_MODEL}`; renderGeminiUI(); }
+    catch(e){if(msg)msg.textContent=e.message||'Verbindung fehlgeschlagen.';}
+  });
+}
+
+initGeminiControls();
+renderGeminiUI();

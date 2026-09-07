@@ -294,3 +294,18 @@ body.flow-open{overflow:hidden}
 .history-actions{padding:0 12px 12px;display:flex;justify-content:flex-end}
 @media(max-width:520px){.set-edit-grid{grid-template-columns:1fr}.set-edit-actions{grid-template-columns:1fr}.last-time-sets{grid-template-columns:1fr 1fr}}
 .performance-toast{position:fixed;z-index:140;left:50%;bottom:calc(var(--nav-h,88px) + 22px);transform:translate(-50%,18px);width:min(340px,calc(100% - 28px));padding:12px 14px;border-radius:18px;background:#132239;border:1px solid rgba(255,255,255,.08);box-shadow:0 16px 50px rgba(0,0,0,.42);opacity:0;transition:.2s ease;pointer-events:none;display:flex;justify-content:space-between;gap:10px;align-items:center}.performance-toast.show{opacity:1;transform:translate(-50%,0)}.performance-toast b{font-size:.86rem}.performance-toast span{font-size:.72rem;color:var(--muted);text-align:right}.performance-toast.better b{color:var(--success)}.performance-toast.worse b{color:var(--danger)}.performance-toast.same b{color:#d9e6f5}
+
+/* V4.2 Gemini BYOK */
+.ai-coach-card{border-color:rgba(124,231,212,.18)}
+.ai-chat-row{display:grid;grid-template-columns:1fr auto;gap:10px;margin-top:12px;align-items:end}
+.ai-chat-row textarea{width:100%;resize:vertical;min-height:52px;max-height:140px;background:#0d182a;color:var(--text);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:12px 13px;outline:none;font:inherit}
+.ai-chat-row textarea:focus{border-color:rgba(116,168,255,.55);box-shadow:0 0 0 3px rgba(116,168,255,.08)}
+.ai-answer{margin-top:12px;padding:13px 14px;border-radius:18px;background:#0d182a;border:1px solid rgba(124,231,212,.14);line-height:1.52;color:#e7f2ff;font-size:.88rem}
+.ai-answer.loading{color:var(--muted);font-style:italic}
+.ai-answer.error{border-color:rgba(255,150,150,.24);color:#ffd1d1}
+.ai-key-label{display:block;color:var(--muted);font-size:.77rem;font-weight:800}
+.ai-key-row{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:7px}
+.ai-key-row input{width:100%;min-width:0;background:#0d182a;color:var(--text);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:13px 14px;outline:none}
+.ai-key-row input:focus{border-color:rgba(116,168,255,.55)}
+.ai-link{display:flex;text-align:center;margin-top:10px;text-decoration:none}
+@media(max-width:520px){.ai-chat-row{grid-template-columns:1fr}.ai-chat-row button{width:100%}.ai-key-row{grid-template-columns:1fr auto}}

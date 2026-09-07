@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Cal Coach" />
   <meta name="description" content="Persönlicher Calisthenics Coach: Training, Ernährung, Progression und Statistik." />
-  <title>Calisthenics Coach V4.1 Guided</title>
+  <title>Calisthenics Coach V4.2 Guided AI</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <link rel="stylesheet" href="styles.css" />
@@ -16,7 +16,7 @@
 <body>
   <header class="topbar">
     <div>
-      <div class="eyebrow">Calisthenics Coach · V4.1 Guided</div>
+      <div class="eyebrow">Calisthenics Coach · V4.2 AI</div>
       <h1>Calisthenics Coach</h1>
     </div>
     <div class="top-actions">
@@ -106,6 +106,25 @@
           <div id="todayMealPresets" class="quick-presets"></div>
         </article>
       </div>
+
+
+      <article id="aiCoachCard" class="card ai-coach-card">
+        <div class="card-head">
+          <div><div class="eyebrow">KI Coach · optional</div><h3>Frag deinen Coach</h3></div>
+          <span id="aiCoachStatus" class="mode-badge">AUS</span>
+        </div>
+        <p id="aiCoachHint" class="muted">Mit deinem eigenen kostenlosen Gemini-Key kannst du deine heutigen Daten, Ernährung und Trainingshistorie analysieren lassen.</p>
+        <div id="aiQuickPrompts" class="chip-row">
+          <button type="button" data-ai-prompt="today">Was soll ich heute beachten?</button>
+          <button type="button" data-ai-prompt="training">Bewerte mein letztes Training</button>
+          <button type="button" data-ai-prompt="food">Was soll ich heute noch essen?</button>
+        </div>
+        <div class="ai-chat-row">
+          <textarea id="aiCoachQuestion" rows="2" placeholder="Oder eigene Frage stellen …"></textarea>
+          <button id="aiCoachAsk" class="primary" type="button">Fragen</button>
+        </div>
+        <div id="aiCoachAnswer" class="ai-answer hidden"></div>
+      </article>
 
       <div id="waistReminder" class="card reminder-card hidden">
         <div>
@@ -352,7 +371,7 @@
     </section>
 
     <section id="settings" class="view" data-view>
-      <div class="section-head"><div><div class="eyebrow">App</div><h2>Mehr & Einstellungen</h2></div><span class="pill">V4.1.0</span></div>
+      <div class="section-head"><div><div class="eyebrow">App</div><h2>Mehr & Einstellungen</h2></div><span class="pill">V4.2.0</span></div>
       <article class="card">
         <div class="card-head"><div><div class="eyebrow">Planwerte</div><h3>Deine Basis</h3></div></div>
         <div class="settings-grid">
@@ -392,6 +411,26 @@
           <button id="editProfileBtn" class="secondary grow" type="button">Profil-Fragen erneut starten</button>
           <button id="newProfileBtn" class="danger-btn grow" type="button">Neues Profil auf diesem Gerät</button>
         </div>
+      </article>
+
+
+      <article class="card ai-settings-card">
+        <div class="card-head"><div><div class="eyebrow">KI Coach</div><h3>Eigener Gemini API-Key</h3></div><span id="geminiConnectionBadge" class="mode-badge">NICHT VERBUNDEN</span></div>
+        <p class="muted">Jede Person trägt ihren eigenen Key ein. Er wird nur auf diesem Gerät gespeichert und niemals in dein App-Backup geschrieben.</p>
+        <label class="ai-key-label">Gemini API-Key
+          <div class="ai-key-row"><input id="geminiApiKey" type="password" autocomplete="off" spellcheck="false" placeholder="AIza…"><button id="toggleGeminiKey" class="small-btn" type="button">Anzeigen</button></div>
+        </label>
+        <div class="action-row compact-row" style="margin-top:10px">
+          <button id="saveGeminiKey" class="primary grow" type="button">Key lokal speichern</button>
+          <button id="testGeminiKey" class="secondary grow" type="button">Verbindung testen</button>
+          <button id="deleteGeminiKey" class="danger-btn grow" type="button">Key löschen</button>
+        </div>
+        <div id="geminiKeyMessage" class="status"></div>
+        <details class="inline-details" style="margin-top:12px">
+          <summary>Sicherheit & kostenlose Nutzung</summary>
+          <p class="muted" style="margin-top:10px">Diese statische GitHub-App sendet deinen Key direkt aus deinem Browser an Google. Das ist bequem für „Bring your own key“, aber weniger sicher als ein Backend. Nutze deshalb einen separaten, auf Gemini beschränkten Key und aktiviere keine Abrechnung, wenn du garantiert im Free Tier bleiben willst. Daten aus der kostenlosen Gemini-Stufe können von Google zur Produktverbesserung verwendet werden.</p>
+          <a class="secondary ai-link" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Key in Google AI Studio erstellen</a>
+        </details>
       </article>
 
       <article class="card">
