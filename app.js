@@ -1,7 +1,7 @@
 'use strict';
 
 const STORE_KEY = 'calisthenicsCoach_v2'; // bewusst gleich: V2-Daten bleiben erhalten
-const VERSION = '4.3.0';
+const VERSION = '5.0.1';
 const GEMINI_KEY_STORE = 'calisthenicsCoach_geminiKey_v1';
 const GEMINI_MODEL = 'gemini-3.5-flash-lite';
 
@@ -815,16 +815,23 @@ function renderExerciseCard(item) {
 function renderDashboard() {
   const today = localDateKey(), plan = planForDate(today), rec = recoveryDecision(today), d = state.daily[today] || {}, meals = mealTotals(today);
   const strength = latestStrength(), currentW = d.weight != null ? +d.weight : latestWeight();
+  const greeting = document.getElementById('todayGreeting');
+  if (greeting) greeting.textContent = state.profile?.name ? `Hi, ${state.profile.name}` : 'Dein Tag';
   document.getElementById('heroWeight').textContent = fmt(currentW);
   document.getElementById('heroPullups').textContent = maxStrength('pullups');
   document.getElementById('heroHs').textContent = maxStrength('handstand');
   document.getElementById('heroWeek').textContent = weekSessions(today).filter(s => ['A','B','C'].includes(s.key)).length;
-  document.getElementById('todayDateLabel').textContent = `${deDateLong(today)} · ${today}`;
+  document.getElementById('todayDateLabel').textContent = deDateLong(today);
 
   const mode = document.getElementById('coachMode');
   mode.textContent = rec.mode === 'CHECK' ? 'CHECK' : rec.mode;
   mode.className = `mode-badge ${['LIGHT','REDUCED'].includes(rec.mode) ? 'light' : rec.mode === 'STOP' ? 'stop' : ''}`;
   document.getElementById('dailyScore').textContent = rec.score == null ? '–' : rec.score;
+  const dailyCard = document.querySelector('.daily-check-card');
+  const checkDone = dailyCheckComplete(today);
+  dailyCard?.classList.toggle('is-complete', checkDone);
+  const checkBtn = document.getElementById('guidedCheckBtn');
+  if (checkBtn) checkBtn.textContent = checkDone ? 'Check aktualisieren' : 'Check starten';
 
   let coachTitle = plan.title, coachText = rec.text, bullets = [], canTrain = true;
   if (plan.type === 'workout') {
@@ -924,8 +931,7 @@ function renderWaistReminder() {
 
 function renderTodayQuickPresets() {
   const root = document.getElementById('todayMealPresets');
-  root.innerHTML = MEAL_PRESETS.slice(0, 3).map((m, i) => `<button type="button" data-today-preset="${i}">+ ${m.name}</button>`).join('');
-  root.querySelectorAll('[data-today-preset]').forEach(btn => btn.onclick = () => addMeal(MEAL_PRESETS[+btn.dataset.todayPreset]));
+  if (root) root.innerHTML = '';
 }
 
 function loadDailyForm() {
@@ -978,11 +984,16 @@ function renderWorkoutTabs() {
 
 function renderTrainingOverview() {
   const root = document.getElementById('trainingOverview'); const coach = document.getElementById('guidedCoach');
-  if (guided) { root.classList.add('hidden'); coach.classList.remove('hidden'); renderGuided(); return; }
+  if (guided) {
+    document.body.classList.add('workout-mode');
+    root.classList.add('hidden'); coach.classList.remove('hidden'); renderGuided(); return;
+  }
+  document.body.classList.remove('workout-mode');
   root.classList.remove('hidden'); coach.classList.add('hidden');
   const dayPlan = planForDate();
   if (dayPlan.type !== 'workout' && !manualWorkoutMode) {
-    root.innerHTML = `<article class="card"><div class="eyebrow">Heute</div><h2>${dayPlan.title}</h2><p class="coach-tip">${dayPlan.type === 'skill' ? 'Heute ist nur der kurze Handstand-Block vorgesehen. Kein komplettes Krafttraining nötig.' : 'Heute ist Regeneration eingeplant. Ein komplettes Workout ist nicht erforderlich.'}</p><p class="muted">Falls du bewusst eine andere Einheit nachholen willst, öffne unten „Andere Einheit auswählen“.</p></article>`;
+    root.innerHTML = `<article class="card"><div class="workout-header"><div><div class="eyebrow">Heute</div><h2>${dayPlan.title}</h2></div><span class="mode-badge subtle">RECOVERY</span></div><p class="coach-tip">${dayPlan.type === 'skill' ? 'Heute ist nur ein kurzer Handstand-Block vorgesehen.' : 'Heute ist Regeneration eingeplant. Kein Pflicht-Workout.'}</p><button class="secondary full" type="button" data-open-other>Andere Einheit auswählen</button></article>`;
+    root.querySelector('[data-open-other]')?.addEventListener('click',()=>document.querySelector('#train .compact-accordion')?.setAttribute('open',''));
     return;
   }
   const wt = workoutTemplate(selectedWorkout, localDateKey()), rec = recoveryDecision();
@@ -990,20 +1001,26 @@ function renderTrainingOverview() {
   const otherActive = state.activeSession && state.activeSession.key !== selectedWorkout;
   const alreadyDone = workoutDoneDate(localDateKey(), selectedWorkout) && !activeForThisWorkout;
   const blockStart = ((['CHECK','STOP'].includes(rec.mode) && !activeForThisWorkout) || alreadyDone);
-  const btnText = alreadyDone ? 'Heute schon erledigt ✓' : (activeForThisWorkout ? 'Training fortsetzen' : (rec.mode === 'CHECK' ? 'Erst Recovery-Check ausfüllen' : rec.mode === 'STOP' ? 'Wegen Gelenk-Check nicht starten' : (otherActive ? `${wt.label} stattdessen starten` : 'Geführtes Training starten')));
+  const btnText = alreadyDone ? 'Heute schon erledigt ✓' : (activeForThisWorkout ? 'Training fortsetzen' : (rec.mode === 'CHECK' ? 'Erst Tagescheck ausfüllen' : rec.mode === 'STOP' ? 'Heute nicht starten' : (otherActive ? `${wt.label} stattdessen starten` : 'Training starten')));
+  const heroItem = wt.items.find(x=>!x.special) || wt.items[0];
+  const heroEx = EX[heroItem.id];
   const openInfo = otherActive ? (() => {
     const openWt = workoutTemplate(state.activeSession.key, state.activeSession.date || localDateKey());
     const openItem = openWt.items[state.activeSession.itemIndex || 0] || openWt.items[0];
-    return `<div class="open-session-card"><div><span>Offene Einheit gefunden</span><b>${openWt.label}</b><small>${EX[openItem.id]?.name || 'Training'} · Satz ${(state.activeSession.setIndex || 0) + 1}. Sie sperrt keine anderen Trainings mehr.</small></div><div class="action-row compact-row"><button id="resumeOpenWorkout" class="secondary grow" type="button">Offene Einheit fortsetzen</button><button id="discardOpenWorkout" class="danger-btn grow" type="button">Offene Einheit verwerfen</button></div></div>`;
+    return `<div class="open-session-card"><div><span>Offene Einheit</span><b>${openWt.label}</b><small>${EX[openItem.id]?.name || 'Training'} · Satz ${(state.activeSession.setIndex || 0) + 1}</small></div><div class="action-row"><button id="resumeOpenWorkout" class="secondary" type="button">Fortsetzen</button><button id="discardOpenWorkout" class="ghost-btn" type="button">Verwerfen</button></div></div>`;
   })() : '';
-  root.innerHTML = `<article class="card">
-      <div class="workout-header"><div><div class="eyebrow">${wt.focus}</div><h2>${wt.label}</h2><p class="muted">${wt.duration}</p></div><span class="mode-badge ${['LIGHT','REDUCED'].includes(rec.mode)?'light':rec.mode==='STOP'?'stop':''}">${rec.mode}</span></div>
+  const exerciseRows = wt.items.map((item,i)=>{
+    const ex=EX[item.id];
+    return `<div class="training-plan-row"><span class="training-plan-num">${i+1}</span>${visualHTML(ex.visual,true,ex.name)}<div><b>${ex.name}</b><small>${targetText(item)}</small></div></div>`;
+  }).join('');
+  root.innerHTML = `<article class="card training-start-card">
+      <div class="training-cover">${visualHTML(heroEx.visual,false,heroEx.name)}<span class="training-cover-shade"></span><div class="training-cover-copy"><div class="eyebrow">${wt.focus}</div><h2>${wt.label}</h2><p>${wt.duration}</p></div><span class="mode-badge training-cover-badge ${['LIGHT','REDUCED'].includes(rec.mode)?'light':rec.mode==='STOP'?'stop':''}">${rec.mode}</span></div>
       ${openInfo}
-      <p class="coach-tip">${alreadyDone ? '<b>Heute erledigt:</b> Dieses Training ist schon gespeichert. Kein zweites Pflicht-Workout nötig.' : (activeForThisWorkout ? `<b>Offene Einheit:</b> ${EX[wt.items[state.activeSession.itemIndex]?.id || wt.items[0].id].name} · Satz ${(state.activeSession.setIndex || 0) + 1}.` : rec.text)} ${selectedWorkout === 'B' ? `Beine heute: <b>${EX[wt.legChoice].name}</b>.` : ''}</p>
+      <p class="coach-tip">${alreadyDone ? 'Diese Einheit ist heute bereits gespeichert.' : (activeForThisWorkout ? `<b>Weiter bei:</b> ${EX[wt.items[state.activeSession.itemIndex]?.id || wt.items[0].id].name} · Satz ${(state.activeSession.setIndex || 0) + 1}.` : rec.text)}${selectedWorkout === 'B' ? ` Beine: <b>${EX[wt.legChoice].name}</b>.` : ''}</p>
       <button id="startWorkoutBtn" class="primary full" type="button" ${blockStart ? 'disabled' : ''}>${btnText}</button>
-      ${activeForThisWorkout ? '<button id="discardCurrentWorkout" class="danger-btn full secondary-line" type="button">Offene Einheit verwerfen und neu starten</button>' : ''}
-    </article>
-    <details class="inline-details workout-details"><summary>Übungen ansehen</summary><div class="workout-list">${wt.items.map(renderExerciseCard).join('')}</div></details>`;
+      ${activeForThisWorkout ? '<button id="discardCurrentWorkout" class="text-action danger-text full secondary-line" type="button">Offene Einheit verwerfen & neu starten</button>' : ''}
+      <details class="workout-details"><summary>Übungen ansehen</summary><div class="training-plan-list">${exerciseRows}</div></details>
+    </article>`;
   document.getElementById('resumeOpenWorkout')?.addEventListener('click', () => {
     selectedWorkout = state.activeSession.key; restoreActiveSession(); renderWorkoutTabs(); renderTrainingOverview();
   });
@@ -1055,8 +1072,8 @@ function renderGuided() {
       <div class="action-row"><button id="viewCompletedWorkout" class="secondary" type="button">Training ansehen</button><button id="finishCoachBtn" class="primary" type="button">Zur Startseite</button></div></article></div>`;
     document.getElementById('completedAiSummaryBtn')?.addEventListener('click',()=>runWorkoutAI(completedSession,'completedAiSummaryText',{force:true}));
     if(completedSession && hasGeminiKey() && state.settings.aiAutoTraining!==false && !cachedSummary) setTimeout(()=>runWorkoutAI(completedSession,'completedAiSummaryText'),0);
-    document.getElementById('finishCoachBtn').onclick = () => { guided = null; selectedWorkout = wt.short === 'Mo' ? 'A' : selectedWorkout; switchView('today'); renderTrainingOverview(); };
-    document.getElementById('viewCompletedWorkout').onclick = () => { guided=null; renderTrainingOverview(); renderTrainingHistory(); setTimeout(()=>document.getElementById('trainingHistoryCard')?.scrollIntoView({behavior:'smooth'}),80); };
+    document.getElementById('finishCoachBtn').onclick = () => { document.body.classList.remove('workout-mode'); guided = null; selectedWorkout = wt.short === 'Mo' ? 'A' : selectedWorkout; switchView('today'); renderTrainingOverview(); };
+    document.getElementById('viewCompletedWorkout').onclick = () => { document.body.classList.remove('workout-mode'); guided=null; renderTrainingOverview(); renderTrainingHistory(); setTimeout(()=>document.getElementById('trainingHistoryCard')?.scrollIntoView({behavior:'smooth'}),80); };
     return;
   }
   const item = wt.items[guided.itemIndex];
@@ -1102,16 +1119,16 @@ function renderGuided() {
     <article class="card coach-exercise">
       <div class="card-head"><div><div class="eyebrow">${ex.cat}</div><h2>${ex.name}</h2></div><span class="pill">${targetText(item)}</span></div>
       <div class="coach-visual">${visualHTML(ex.visual, false, ex.name)}</div>
-      <ul class="cue-list">${ex.cues.map(x => `<li>${x}</li>`).join('')}</ul>
+      <details class="exercise-technique"><summary>Technik & Hinweise</summary><ul class="cue-list">${ex.cues.map(x => `<li>${x}</li>`).join('')}</ul></details>
       ${body}
       ${renderGuidedAIBox(item)}
-      <div class="coach-nav">${guided.itemIndex > 0 ? '<button id="prevExercise" class="secondary" type="button">← Zurück</button>' : ''}<button id="cancelCoach" class="ghost-btn" type="button">Training verlassen</button><button id="discardCoach" class="danger-btn" type="button">Offene Einheit verwerfen</button></div>
+      <div class="coach-nav">${guided.itemIndex > 0 ? '<button id="prevExercise" class="secondary" type="button">← Zurück</button>' : ''}<button id="cancelCoach" class="ghost-btn" type="button">Training verlassen</button></div><details class="danger-zone"><summary>Weitere Optionen</summary><button id="discardCoach" class="text-action danger-text full" type="button">Offene Einheit verwerfen</button></details>
     </article>
   </div>`;
 
   document.getElementById('cancelCoach').onclick = () => {
     if (confirm('Training verlassen? Deine bisher eingetragenen Sätze bleiben gespeichert und du kannst später genau hier weitermachen.')) {
-      persistActive(); guided = null; renderTrainingOverview();
+      persistActive(); document.body.classList.remove('workout-mode'); guided = null; renderTrainingOverview();
     }
   };
   document.getElementById('discardCoach')?.addEventListener('click',()=>{
@@ -1321,7 +1338,7 @@ function renderMeals() {
   document.getElementById('foodCoachTitle').textContent=analysis.title;
   document.getElementById('foodCoachAdvice').textContent=analysis.text;
   setBar('foodCaloriesBar',totals.calories,t.calories); setBar('foodProteinBar',totals.protein,t.protein); setBar('foodCarbsBar',totals.carbs,t.carbs); setBar('foodFatBar',totals.fat,t.fat);
-  document.getElementById('mealList').innerHTML = list.length ? list.map(m => `<div class="meal-log-item"><div><b>${m.name}</b><small>${m.amount?`${m.amount} ${m.unit||'g'} · `:''}${Math.round(+m.cal||0)} kcal · ${round1(m.protein)} g P · ${round1(m.carbs)} g KH · ${round1(m.fat)} g F${(+m.fiber||0)>0?` · ${round1(m.fiber)} g Ballastst.`:''}</small></div><button type="button" data-delmeal="${m.id}">×</button></div>`).join('') : '<p class="muted">Noch nichts geloggt.</p>';
+  document.getElementById('mealList').innerHTML = list.length ? list.map(m => `<div class="meal-log-item"><div><b>${m.name}${m.source==='gemini'?'<em class="ai-estimate-tag">KI-Schätzung</em>':''}</b><small>${m.amount?`${m.amount} ${m.unit||'g'} · `:''}${Math.round(+m.cal||0)} kcal · ${round1(m.protein)} g P · ${round1(m.carbs)} g KH · ${round1(m.fat)} g F${(+m.fiber||0)>0?` · ${round1(m.fiber)} g Ballastst.`:''}</small>${m.assumption?`<small class="meal-assumption">Annahme: ${escapeHTML(m.assumption)}</small>`:''}</div><button type="button" data-delmeal="${m.id}">×</button></div>`).join('') : '<p class="muted">Noch nichts geloggt.</p>';
   document.querySelectorAll('[data-delmeal]').forEach(btn => btn.onclick = () => { state.meals[key] = list.filter(m => String(m.id) !== String(btn.dataset.delmeal)); saveState(); });
   renderRecentFoods();
   if (!selectedFood) renderFoodSearchResults(document.getElementById('foodSearch')?.value || '');
@@ -1447,10 +1464,23 @@ const HSPU_STAGES = [
 
 function renderSkills() {
   const root = document.getElementById('skillTree'), pull = maxStrength('pullups');
-  root.innerHTML = HSPU_STAGES.map((s,i)=>{
-    const current = i === state.skillStages.hspu, unlocked = i <= state.skillStages.hspu + 1;
-    return `<article class="card skill-card ${current?'current':''} ${unlocked?'':'locked'}"><span class="skill-num">${i+1}</span><div class="eyebrow">HSPU-Pfad</div><h3>${s.name}</h3><p class="muted">${s.desc}</p><div class="progress-note">Ziel: ${s.need}</div>${current && i < HSPU_STAGES.length-1 ? '<button class="secondary full" type="button" data-hspu-next>Stufe geschafft markieren</button>' : ''}</article>`;
+  const stage = clamp(+state.skillStages.hspu || 0, 0, HSPU_STAGES.length - 1);
+  const current = HSPU_STAGES[stage];
+  const rows = HSPU_STAGES.map((item,i) => {
+    const status = i < stage ? 'done' : i === stage ? 'current' : 'upcoming';
+    const marker = i < stage ? '✓' : i + 1;
+    return `<div class="skill-stage-row ${status}"><span class="skill-stage-marker">${marker}</span><div><b>${item.name}</b><small>${item.need}</small></div>${i === stage ? '<em>Aktuell</em>' : ''}</div>`;
   }).join('');
+  root.innerHTML = `<article class="surface current-skill-card">
+      <div class="skill-current-head"><span class="skill-num">${stage + 1}</span><div><p class="section-label accent">Aktuelle HSPU-Stufe</p><h2>${current.name}</h2></div></div>
+      <p class="support-copy">${current.desc}</p>
+      <div class="skill-goal-line"><span>Nächstes Ziel</span><b>${current.need}</b></div>
+      ${stage < HSPU_STAGES.length - 1 ? '<button class="primary full" type="button" data-hspu-next>Stufe geschafft markieren</button>' : '<div class="success-line">HSPU-Pfad vollständig ✓</div>'}
+    </article>
+    <details class="surface accordion-card skill-path-details">
+      <summary><span class="summary-icon">↗</span><span><b>Kompletter HSPU-Pfad</b><small>${stage + 1} von ${HSPU_STAGES.length} · nur bei Bedarf öffnen</small></span></summary>
+      <div class="accordion-body"><div class="skill-stage-list">${rows}</div></div>
+    </details>`;
   document.querySelector('[data-hspu-next]')?.addEventListener('click',()=>{state.skillStages.hspu=Math.min(HSPU_STAGES.length-1,state.skillStages.hspu+1);saveState();});
   const flagReady = pull >= 8;
   document.getElementById('flagLock').textContent = flagReady ? 'BASIS BEREIT' : 'LOCKED';
@@ -1496,9 +1526,13 @@ function currentPhase() {
 }
 function renderRoadmap() {
   const phase = currentPhase(); document.getElementById('currentPhaseBadge').textContent = `PHASE ${phase}`;
-  document.getElementById('roadmapCards').innerHTML = ROADMAP.map(p=>`<article class="card roadmap-card ${p.phase===phase?'current':''} ${p.phase>phase?'locked':''}"><div class="eyebrow">Phase ${p.phase} · ${p.months}</div><h3>${p.title}</h3><div class="phase-criteria">${p.actions.map(a=>`<div><span class="${p.phase<phase?'yes':''}">${p.phase<phase?'✓':'•'}</span><span>${a}</span></div>`).join('')}</div></article>`).join('');
+  const current = ROADMAP.find(p=>p.phase===phase) || ROADMAP[0];
+  const rows = ROADMAP.map(p=>`<div class="roadmap-phase-row ${p.phase===phase?'current':''} ${p.phase<phase?'done':''}"><span>${p.phase<phase?'✓':p.phase}</span><div><b>${p.title}</b><small>${p.months}</small></div>${p.phase===phase?'<em>Jetzt</em>':''}</div>`).join('');
+  document.getElementById('roadmapCards').innerHTML = `<article class="surface roadmap-current-card"><p class="section-label accent">Phase ${current.phase} · ${current.months}</p><h2>${current.title}</h2><div class="phase-criteria">${current.actions.map(a=>`<div><span>•</span><span>${a}</span></div>`).join('')}</div></article>
+    <details class="surface accordion-card roadmap-all-details"><summary><span class="summary-icon">↗</span><span><b>Alle Phasen</b><small>Langfristigen Weg anzeigen</small></span></summary><div class="accordion-body"><div class="roadmap-phase-list">${rows}</div></div></details>`;
   renderMilestones(); renderRun();
 }
+
 function renderMilestones() {
   const vals = [
     ['Strikte Pull-ups',maxStrength('pullups'),10,'10'],['Dips',maxStrength('dips'),15,'15'],['Freier Handstand',maxStrength('handstand'),30,'30 s'],['Dead Hang',maxStrength('hang'),90,'90 s'],['Wall HSPU',maxStrength('hspu'),3,'3']
@@ -1592,7 +1626,7 @@ function renderCreatineStreak() {
 }
 
 function renderAllDerived() {
-  renderDashboard(); renderMeals(); renderVacation(); renderStats(); renderSkills(); renderRoadmap(); renderPhotos(); renderProfileSettings(); renderTrainingHistory(); renderGeminiUI();
+  renderDashboard(); renderMeals(); renderVacation(); renderStats(); renderSkills(); renderRoadmap(); renderPhotos(); renderProfileSettings(); renderTrainingHistory(); renderGeminiUI(); renderAiMealEntryUI();
 }
 function restoreActiveSession() {
   if (!state.activeSession) return false;
@@ -1628,6 +1662,7 @@ function renderAll() {
 
 function switchView(id, skipGuard=false) {
   if(!skipGuard && state.profile?.onboardingComplete && id!=='today' && !dailyCheckComplete()) { startDailyCheck({view:id}); return; }
+  if (id !== 'train') document.body.classList.remove('workout-mode');
   if (id === 'train' && !state.activeSession && planForDate().type !== 'workout') manualWorkoutMode = false;
   document.querySelectorAll('[data-view]').forEach(v=>v.classList.toggle('active',v.id===id));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.target===id));
@@ -1637,6 +1672,16 @@ function switchView(id, skipGuard=false) {
 }
 document.querySelectorAll('.nav-btn').forEach(btn=>btn.onclick=()=>switchView(btn.dataset.target));
 document.querySelectorAll('[data-nav]').forEach(btn=>btn.onclick=()=>switchView(btn.dataset.nav));
+
+function initStatsTabs(){
+  document.querySelectorAll('[data-stat-tab]').forEach(btn=>btn.addEventListener('click',()=>{
+    const key=btn.dataset.statTab;
+    document.querySelectorAll('[data-stat-tab]').forEach(x=>x.classList.toggle('active',x===btn));
+    document.querySelectorAll('[data-stat-panel]').forEach(p=>p.classList.toggle('active',p.dataset.statPanel===key));
+    setTimeout(drawCharts,30);
+  }));
+}
+initStatsTabs();
 
 document.getElementById('openTodayWorkout').onclick=()=>{if(!dailyCheckComplete()){startDailyCheck({action:'todayWorkout'});return;}startTodayWorkoutAfterCheck();};
 document.getElementById('quickHandstandBtn').onclick=startHandstandSession;
@@ -1648,7 +1693,7 @@ async function exportBackup() {
   try{photoBlobs=await photoGetAll();}catch(e){console.warn('Fotos konnten nicht ins Backup aufgenommen werden',e);}
   const backup={...state,photoBlobs};
   const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}),a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);a.download=`calisthenics-coach-v4.2.2-guided-ai-${localDateKey()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  a.href=URL.createObjectURL(blob);a.download=`calisthenics-coach-v5-native-minimal-${localDateKey()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 document.getElementById('exportBtn').onclick=exportBackup;
 document.getElementById('importFile').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;try{const raw=JSON.parse(await f.text());const blobs=Array.isArray(raw.photoBlobs)?raw.photoBlobs:[];delete raw.photoBlobs;state=migrate(raw);for(const rec of blobs){try{await photoPut(rec);}catch(err){console.warn(err);}}saveState();renderAll();alert('Backup importiert ✓');}catch(err){console.error(err);alert('Backup konnte nicht gelesen werden.');}};
@@ -1877,8 +1922,9 @@ renderAll();
 initGuidedExperience();
 
 
-// ---------- V4.3 contextual Bring-your-own Gemini AI ----------
+// ---------- V5 Native Minimal · contextual Bring-your-own Gemini AI + natural language food logging ----------
 const aiBusy = new Set();
+let aiMealDraft = { original:'', answers:[], lastBatchId:null };
 function geminiKey() { return (localStorage.getItem(GEMINI_KEY_STORE) || '').trim(); }
 function hasGeminiKey() { return geminiKey().length >= 20; }
 function escapeHTML(value='') { return String(value).replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch])); }
@@ -1911,6 +1957,7 @@ function renderGeminiUI() {
   const toggles={aiAutoDaily:'aiAutoDaily',aiAutoTraining:'aiAutoTraining',aiAutoFood:'aiAutoFood'};
   Object.entries(toggles).forEach(([id,key])=>{const e=document.getElementById(id);if(e)e.checked=state.settings[key]!==false;});
   renderFoodAIUI();
+  renderAiMealEntryUI();
 }
 
 function lastCompletedWorkout() {
@@ -1969,17 +2016,19 @@ function aiPrompt(kind, question='') {
   return `Du bist ein knapper, evidenzorientierter Calisthenics-Coach in einer Fitness-App. Antworte auf Deutsch.\n\nRegeln:\n- Maximal 5 kurze Punkte, keine langen Einleitungen.\n- Nutze ausschließlich die gelieferten Nutzerdaten; erfinde keine Messwerte.\n- Bei Schmerzen >=4/10 keine belastende Übung empfehlen; bei anhaltenden oder zunehmenden Beschwerden zur medizinischen Abklärung raten.\n- Keine Diagnose stellen.\n- Bei Ernährung konkrete einfache Vorschläge machen, aber keine exakten Nährwerte erfinden, wenn sie nicht in den Daten stehen.\n- Das Trainingsprogramm der App ist die Basis; ändere es nur, wenn Recovery/Schmerz eine Anpassung verlangt.\n\nAufgabe: ${labels[kind] || labels.custom}\n\nAPP-DATEN:\n${JSON.stringify(ctx)}`;
 }
 
-async function geminiGenerate(prompt, {timeoutMs=20000,maxTokens=500}={}) {
+async function geminiGenerate(prompt, {timeoutMs=20000,maxTokens=500,responseFormat=null}={}) {
   const key = geminiKey();
   if (!key) throw new Error('Kein Gemini API-Key gespeichert.');
   const controller = new AbortController();
   const timeout = setTimeout(()=>controller.abort(), timeoutMs);
   try {
+    const payload={model:GEMINI_MODEL,input:prompt,store:false,generation_config:{temperature:0.3,max_output_tokens:maxTokens}};
+    if(responseFormat)payload.response_format=responseFormat;
     const res = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
       method:'POST',
       headers:{'Content-Type':'application/json','x-goog-api-key':key},
       signal:controller.signal,
-      body:JSON.stringify({model:GEMINI_MODEL,input:prompt,store:false,generation_config:{temperature:0.3,max_output_tokens:maxTokens}})
+      body:JSON.stringify(payload)
     });
     const data = await res.json().catch(()=>({}));
     if (!res.ok) {
@@ -2096,7 +2145,102 @@ async function runSetAI(item,entry,setIndex,{force=false}={}){
   finally{aiBusy.delete(busyKey);}
 }
 
+
+function extractGeminiJSON(text) {
+  const raw=String(text||'').trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();
+  const start=raw.indexOf('{'), end=raw.lastIndexOf('}');
+  if(start<0||end<=start) throw new Error('Die KI-Antwort konnte nicht als Nährwertdaten gelesen werden. Bitte erneut versuchen.');
+  try{return JSON.parse(raw.slice(start,end+1));}catch(e){throw new Error('Die KI hat unvollständige Nährwertdaten geliefert. Bitte erneut versuchen.');}
+}
+function safeNutritionNumber(v,max=5000){const n=Number(v);return Number.isFinite(n)&&n>=0&&n<=max?n:0;}
+function sanitizeAiMealItem(item,index){
+  const name=String(item?.name||`Lebensmittel ${index+1}`).trim().slice(0,90);
+  const amountRaw=Number(item?.amount); const amount=Number.isFinite(amountRaw)&&amountRaw>0?Math.round(amountRaw*10)/10:null;
+  const unit=String(item?.unit||'Portion').trim().slice(0,18) || 'Portion';
+  let cal=safeNutritionNumber(item?.calories,5000), protein=safeNutritionNumber(item?.protein,500), carbs=safeNutritionNumber(item?.carbs,1000), fat=safeNutritionNumber(item?.fat,500), fiber=safeNutritionNumber(item?.fiber,200);
+  if(cal<=0&&(protein+carbs+fat)>0) cal=Math.round(protein*4+carbs*4+fat*9);
+  return {name,amount,unit,cal:Math.round(cal),protein:round1(protein),carbs:round1(carbs),fat:round1(fat),fiber:round1(fiber),assumption:String(item?.assumption||'').trim().slice(0,180)};
+}
+const AI_MEAL_RESPONSE_FORMAT={
+  type:'text',mime_type:'application/json',schema:{
+    type:'object',
+    properties:{
+      status:{type:'string',enum:['ready','clarify']},
+      question:{type:'string'},
+      note:{type:'string'},
+      items:{type:'array',items:{type:'object',properties:{
+        name:{type:'string'}, amount:{type:'number'}, unit:{type:'string'}, calories:{type:'number'}, protein:{type:'number'}, carbs:{type:'number'}, fat:{type:'number'}, fiber:{type:'number'}, assumption:{type:'string'}
+      },required:['name','amount','unit','calories','protein','carbs','fat','fiber','assumption']}}
+    },
+    required:['status','question','note','items']
+  }
+};
+function aiMealPrompt(original,answers=[]){
+  const dialog=answers.length?answers.map((a,i)=>`Rückfrage ${i+1}: ${a.question}\nAntwort: ${a.answer}`).join('\n'):'keine';
+  return `Du bist ein präziser Ernährungstracker für eine Fitness-App. Der Nutzer beschreibt frei eine Mahlzeit. Schätze realistische Nährwerte aus üblichen Lebensmitteldaten und gib AUSSCHLIESSLICH gültiges JSON zurück, ohne Markdown und ohne zusätzlichen Text.\n\nWICHTIG:\n- Wenn eine Unklarheit die Mahlzeit grob um >=150 kcal oder >=15 g Protein verändern kann, frage nach. Typische Beispiele: Nudeln/Reis trocken vs. gekocht, sehr unklare Fleischmenge, stark schwankende Sauce/Öl-Menge.\n- Frage nur nach wirklich wichtigen Dingen. Maximal EINE kurze Rückfrage pro Antwort; sie darf mehrere eng zusammenhängende Details enthalten.\n- Wenn die fehlende Information nicht wichtig genug ist, schätze selbst und schreibe die Annahme beim jeweiligen Item.\n- Bei Mengen wie \"3 Eier\" verwende amount=3 und unit=\"Stk\". Bei Grammangaben amount als Zahl und unit=\"g\". Bei ungenauen Portionen darf amount=1 und unit=\"kleine Portion\" o. ä. sein.\n- Nutze verzehrfertige/gekochte Werte, wenn der Nutzer das klar sagt. Ist bei Nudeln/Reis eine Grammzahl ohne Zustand angegeben, ist trocken vs. gekocht eine wichtige Rückfrage.\n- Für Gemüse mit Sahnesoße oder Mischgerichte schätze die gesamte Portion realistisch; berücksichtige die Sauce.\n- Alle Werte beziehen sich auf die tatsächlich beschriebene Menge, NICHT pro 100 g.\n- Gib für jedes Item calories, protein, carbs, fat und fiber als Zahlen an.\n- Keine medizinische Beratung, keine Motivation, nur Tracking.\n\nWenn Rückfrage nötig:\n{"status":"clarify","question":"...","items":[]}\n\nWenn ausreichend klar:\n{"status":"ready","question":"","items":[{"name":"...","amount":250,"unit":"g","calories":350,"protein":12.5,"carbs":70,"fat":2.5,"fiber":4,"assumption":"gekocht gewogen"}],"note":"kurze optionale Gesamtannahme"}\n\nURSPRÜNGLICHE EINGABE:\n${original}\n\nBISHERIGE RÜCKFRAGEN UND ANTWORTEN:\n${dialog}`;
+}
+function renderAiMealStatus(html,type='normal'){
+  const root=document.getElementById('aiMealFlow'); if(!root)return;
+  root.classList.remove('hidden','error','loading','success'); if(type!=='normal')root.classList.add(type); root.innerHTML=html;
+}
+function renderAiMealEntryUI(){
+  const badge=document.getElementById('aiMealEntryBadge'),btn=document.getElementById('aiMealAnalyzeBtn'),root=document.getElementById('aiMealFlow'); if(!badge||!btn)return;
+  const on=hasGeminiKey(); badge.textContent=on?'BEREIT':'AUS'; badge.className=`mode-badge ${on?'':'light'}`; btn.disabled=!on;
+  if(!on&&root&&root.classList.contains('hidden')){root.dataset.keyHint='1';renderAiMealStatus('<p>Unter <b>Mehr → KI Coach</b> zuerst deinen Gemini-Key hinterlegen. Der normale Food-Tracker funktioniert weiter.</p>');}
+  if(on&&root?.dataset.keyHint==='1'){delete root.dataset.keyHint;root.innerHTML='';root.className='ai-meal-flow hidden';}
+}
+function aiMealTotals(items){return items.reduce((t,m)=>({cal:t.cal+m.cal,protein:round1(t.protein+m.protein),carbs:round1(t.carbs+m.carbs),fat:round1(t.fat+m.fat),fiber:round1(t.fiber+m.fiber)}),{cal:0,protein:0,carbs:0,fat:0,fiber:0});}
+function commitAiMealItems(items,note=''){
+  const key=localDateKey(); state.meals[key] ||= []; const batchId=`ai-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
+  const ids=[];
+  items.forEach((m,i)=>{const id=Date.now()+i+Math.floor(Math.random()*100);ids.push(id);state.meals[key].push({...m,id,batchId,source:'gemini',note:String(note||'').slice(0,180)});});
+  aiMealDraft.lastBatchId=batchId; saveState();
+  return batchId;
+}
+function undoAiMealBatch(batchId){
+  if(!batchId)return; const key=localDateKey(); state.meals[key]=(state.meals[key]||[]).filter(m=>m.batchId!==batchId); saveState();
+  aiMealDraft.lastBatchId=null; renderAiMealStatus('<p>KI-Eintrag wurde rückgängig gemacht.</p>','normal');
+}
+async function analyzeAiMeal({answer=null}={}){
+  if(!hasGeminiKey()){renderAiMealStatus('<p>Kein Gemini-Key gespeichert. Öffne <b>Mehr → KI Coach</b>.</p>','error');return;}
+  const input=document.getElementById('aiMealText');
+  if(answer!==null){
+    const answerText=String(answer).trim(); if(!answerText)return;
+    const pending=aiMealDraft.answers[aiMealDraft.answers.length-1]; if(pending&&!pending.answer)pending.answer=answerText;
+  } else {
+    const original=input?.value.trim()||''; if(!original){input?.focus();return;}
+    aiMealDraft={original,answers:[],lastBatchId:null};
+  }
+  const busyKey='meal-parse'; if(aiBusy.has(busyKey))return; aiBusy.add(busyKey);
+  const btn=document.getElementById('aiMealAnalyzeBtn'); if(btn)btn.disabled=true;
+  renderAiMealStatus('<p>Gemini zerlegt die Mahlzeit und berechnet kcal, Protein, Kohlenhydrate, Fett und Ballaststoffe …</p>','loading');
+  try{
+    const raw=await geminiGenerate(aiMealPrompt(aiMealDraft.original,aiMealDraft.answers),{timeoutMs:25000,maxTokens:900,responseFormat:AI_MEAL_RESPONSE_FORMAT});
+    const data=extractGeminiJSON(raw), status=String(data?.status||'').toLowerCase();
+    if(status==='clarify'){
+      const question=String(data?.question||'').trim(); if(!question)throw new Error('Gemini wollte nachfragen, hat aber keine Frage geliefert.');
+      if(aiMealDraft.answers.length>=3)throw new Error('Die Mahlzeit bleibt zu unklar. Bitte Mengen etwas genauer beschreiben.');
+      aiMealDraft.answers.push({question,answer:''});
+      renderAiMealStatus(`<div class="ai-meal-question"><div class="eyebrow">Kurze Rückfrage</div><b>${escapeHTML(question)}</b><div class="ai-meal-answer-row"><input id="aiMealClarifyAnswer" type="text" autocomplete="off" placeholder="Antwort eingeben …"><button id="aiMealClarifyBtn" class="primary" type="button">Weiter</button></div><button id="aiMealCancelBtn" class="small-btn" type="button">Abbrechen</button></div>`);
+      const ans=document.getElementById('aiMealClarifyAnswer'); const go=()=>analyzeAiMeal({answer:ans?.value||''}); document.getElementById('aiMealClarifyBtn').onclick=go; ans?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();go();}}); document.getElementById('aiMealCancelBtn').onclick=()=>{aiMealDraft={original:'',answers:[],lastBatchId:null};renderAiMealStatus('<p>Eintrag abgebrochen.</p>');}; ans?.focus();
+      return;
+    }
+    if(status!=='ready'||!Array.isArray(data?.items)||!data.items.length)throw new Error('Gemini konnte daraus keine Lebensmittel ableiten. Beschreibe Menge und Gericht etwas genauer.');
+    const items=data.items.map(sanitizeAiMealItem).filter(m=>m.name&&m.cal>=0);
+    if(!items.length)throw new Error('Es wurden keine verwertbaren Nährwerte erkannt.');
+    const batchId=commitAiMealItems(items,data?.note||''); const totals=aiMealTotals(items);
+    const itemHtml=items.map(m=>`<li><span><b>${escapeHTML(m.name)}</b><small>${m.amount?`${m.amount} ${escapeHTML(m.unit)} · `:''}${m.cal} kcal · ${m.protein} P · ${m.carbs} KH · ${m.fat} F${m.fiber?` · ${m.fiber} Ballastst.`:''}</small>${m.assumption?`<em>${escapeHTML(m.assumption)}</em>`:''}</span></li>`).join('');
+    renderAiMealStatus(`<div class="ai-meal-success"><div class="eyebrow">Automatisch eingetragen ✓</div><h4>${totals.cal} kcal · ${totals.protein} g Protein</h4><p>${totals.carbs} g KH · ${totals.fat} g Fett · ${totals.fiber} g Ballaststoffe</p><ul>${itemHtml}</ul>${data?.note?`<small class="ai-meal-note">${escapeHTML(String(data.note))}</small>`:''}<button id="undoAiMealBtn" class="secondary full" type="button">Diesen KI-Eintrag rückgängig machen</button></div>`,'success');
+    document.getElementById('undoAiMealBtn').onclick=()=>undoAiMealBatch(batchId);
+    if(input)input.value=''; aiMealDraft.original=''; aiMealDraft.answers=[];
+    if(hasGeminiKey()&&state.settings.aiAutoFood!==false)setTimeout(()=>runFoodAI('foodAiAnswer',{force:true}),100);
+  }catch(e){renderAiMealStatus(`<p>${escapeHTML(e.message||'KI-Auswertung fehlgeschlagen.')}</p>`,'error');}
+  finally{aiBusy.delete(busyKey);renderAiMealEntryUI();}
+}
+
 function initGeminiControls() {
+  document.getElementById('aiMealAnalyzeBtn')?.addEventListener('click',()=>analyzeAiMeal());
+  document.getElementById('aiMealText')?.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key==='Enter'){e.preventDefault();analyzeAiMeal();}});
   document.querySelectorAll('[data-ai-prompt]').forEach(btn=>btn.onclick=()=>runCoachAI(btn.dataset.aiPrompt));
   document.getElementById('aiCoachAsk')?.addEventListener('click',()=>{const q=document.getElementById('aiCoachQuestion')?.value.trim();if(!q){document.getElementById('aiCoachQuestion')?.focus();return;}runCoachAI('custom',q);});
   document.getElementById('foodAiAsk')?.addEventListener('click',()=>runFoodAI('foodAiAnswer',{force:true}));
@@ -2109,3 +2253,4 @@ function initGeminiControls() {
 
 initGeminiControls();
 renderGeminiUI();
+renderAiMealEntryUI();

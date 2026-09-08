@@ -1,7 +1,7 @@
 {
-  "name": "Calisthenics Coach V4.3 Guided AI",
+  "name": "Cal Coach · V5 Native Minimal",
   "short_name": "Cal Coach",
-  "description": "Persönlicher Calisthenics Coach für Training, Ernährung und Statistik.",
+  "description": "Persönlicher Cal Coach für Training, Ernährung und Statistik.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

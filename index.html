@@ -3,467 +3,423 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0b1220" />
+  <meta name="theme-color" content="#071019" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Cal Coach" />
-  <meta name="description" content="Persönlicher Calisthenics Coach: Training, Ernährung, Progression und Statistik." />
-  <title>Calisthenics Coach V4.3 Guided AI</title>
+  <meta name="description" content="Minimalistischer geführter Calisthenics Coach für Training, Ernährung, Fortschritt und KI-Auswertung." />
+  <title>Cal Coach · V5</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="topbar">
-    <div>
-      <div class="eyebrow">Calisthenics Coach · V4.3 AI</div>
-      <h1>Calisthenics Coach</h1>
-    </div>
-    <div class="top-actions">
-      <span id="onlineBadge" class="status-pill">online</span>
-      <button id="installBtn" class="ghost-btn hidden" type="button">Installieren</button>
-    </div>
+  <!-- Utility elements kept for PWA/runtime logic; intentionally visually quiet. -->
+  <header class="utility-bar" aria-hidden="true">
+    <span id="onlineBadge" class="status-pill">online</span>
+    <button id="installBtn" class="ghost-btn hidden" type="button">Installieren</button>
   </header>
 
   <main class="app-shell">
+    <!-- TODAY -->
     <section id="today" class="view active" data-view>
-      <article class="card hero compact-hero">
+      <header class="screen-header home-header">
         <div>
-          <div class="eyebrow">Heute</div>
-          <h2>Öffnen. Check. Trainieren.</h2>
-          <p class="muted">Die App soll sich wie ein echter Coach anfühlen: klar, clean und ohne Nachdenken.</p>
+          <p id="todayDateLabel" class="screen-kicker">Heute</p>
+          <h1 id="todayGreeting">Dein Tag</h1>
         </div>
-        <div class="hero-stats clean">
-          <div><small>Gewicht</small><span id="heroWeight">87</span></div>
-          <div><small>Pull-ups</small><span id="heroPullups">2</span></div>
-          <div><small>Handstand</small><span id="heroHs">5 s</span></div>
-          <div><small>Workouts/Woche</small><span id="heroWeek">0</span></div>
-        </div>
-      </article>
+        <div class="avatar-mark" aria-hidden="true">C</div>
+      </header>
 
-      <article id="todayCoach" class="card coach-card prominent">
-        <div class="card-head">
+      <section class="daily-check-card surface">
+        <div class="surface-row align-center">
           <div>
-            <div class="eyebrow" id="todayDateLabel">Heute</div>
-            <h3 id="coachTitle">Tagesplan wird geladen</h3>
+            <p class="section-label">Tagescheck</p>
+            <h2>Wie belastbar bist du heute?</h2>
           </div>
-          <span id="coachMode" class="mode-badge">NORMAL</span>
+          <span id="dailyScore" class="score-orb">–</span>
         </div>
-        <p id="coachText" class="lead">Trage Schlaf und Gelenke ein. Danach sagt dir die App genau, was heute dran ist.</p>
-        <div id="coachBullets" class="coach-bullets"></div>
-        <div class="action-row compact-row">
-          <button id="openTodayWorkout" class="primary grow" type="button">Training starten</button>
-          <button id="quickHandstandBtn" class="secondary" type="button">Handstand starten</button>
-        </div>
-      </article>
-
-      <div class="grid-2 main-grid">
-        <article class="card">
-          <div class="card-head">
-            <div>
-              <div class="eyebrow">Tagescheck</div>
-              <h3>Nur das Wichtige</h3>
-            </div>
-            <span id="dailyScore" class="score-ring">–</span>
-          </div>
-          <button id="guidedCheckBtn" class="primary full guided-entry-btn" type="button">Geführten Check starten</button>
-          <details class="inline-details guided-backup-form">
-            <summary>Manuell bearbeiten</summary>
+        <p class="support-copy">Schlaf, Energie und Gelenke. Dauert unter einer Minute.</p>
+        <button id="guidedCheckBtn" class="primary full" type="button">Check starten</button>
+        <details class="quiet-details">
+          <summary>Manuell bearbeiten</summary>
           <form id="dailyForm" class="form-grid compact-form">
             <label>Gewicht kg<input id="dWeight" type="number" step="0.1" inputmode="decimal" placeholder="87,0"></label>
-            <label>Schlaf h<input id="dSleep" type="number" step="0.1" inputmode="decimal" placeholder="5,5"></label>
+            <label>Schlaf h<input id="dSleep" type="number" step="0.1" inputmode="decimal" placeholder="7,0"></label>
             <label>Ellenbogen 0–10<input id="dElbow" type="number" min="0" max="10" step="1" inputmode="numeric" value="0"></label>
             <label>Schulter 0–10<input id="dShoulder" type="number" min="0" max="10" step="1" inputmode="numeric" value="0"></label>
-            <details class="inline-details span-2">
-              <summary>Mehr Eingaben</summary>
+            <details class="quiet-details span-2 nested-quiet">
+              <summary>Weitere Werte</summary>
               <div class="details-grid">
                 <label>Wasser L<input id="dWater" type="number" step="0.1" inputmode="decimal" placeholder="2,5"></label>
                 <label>Schritte<input id="dSteps" type="number" step="100" inputmode="numeric" placeholder="8000"></label>
                 <label>Energie 1–5<select id="dEnergy"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select></label>
-                <label class="check"><input id="dCreatine" type="checkbox"> 5 g Creatin genommen</label>
+                <label class="check"><input id="dCreatine" type="checkbox"> 5 g Creatin</label>
               </div>
             </details>
-            <button class="primary span-2" type="submit">Check speichern</button>
+            <button class="secondary span-2" type="submit">Änderungen speichern</button>
           </form>
           <div id="dailyMsg" class="status"></div>
-          </details>
-        </article>
-
-        <article class="card">
-          <div class="card-head">
-            <div>
-              <div class="eyebrow">Ernährung heute</div>
-              <h3>Ziel im Blick</h3>
-            </div>
-            <button class="small-btn" data-nav="food" type="button">Essen öffnen</button>
-          </div>
-          <div class="nutrition-big clean-nutrition">
-            <div><strong id="todayCalories">0</strong><span id="todayCaloriesGoal">/ – kcal</span></div>
-            <div><strong id="todayProtein">0</strong><span id="todayProteinGoal">/ – g Protein</span></div>
-          </div>
-          <div class="progress-line"><span id="calProgress" style="width:0%"></span></div>
-          <p id="nutritionCoach" class="muted">Mahlzeiten eintragen, dann rechnet die App automatisch.</p>
-          <div id="todayMealPresets" class="quick-presets"></div>
-        </article>
-      </div>
-
-
-      <article id="aiCoachCard" class="card ai-coach-card">
-        <div class="card-head">
-          <div><div class="eyebrow">KI Coach · optional</div><h3>Frag deinen Coach</h3></div>
-          <span id="aiCoachStatus" class="mode-badge">AUS</span>
-        </div>
-        <p id="aiCoachHint" class="muted">Mit deinem eigenen kostenlosen Gemini-Key kannst du deine heutigen Daten, Ernährung und Trainingshistorie analysieren lassen.</p>
-        <div id="aiQuickPrompts" class="chip-row">
-          <button type="button" data-ai-prompt="today">Was soll ich heute beachten?</button>
-          <button type="button" data-ai-prompt="training">Bewerte mein letztes Training</button>
-          <button type="button" data-ai-prompt="food">Was soll ich heute noch essen?</button>
-        </div>
-        <div class="ai-chat-row">
-          <textarea id="aiCoachQuestion" rows="2" placeholder="Oder eigene Frage stellen …"></textarea>
-          <button id="aiCoachAsk" class="primary" type="button">Fragen</button>
-        </div>
-        <div id="aiCoachAnswer" class="ai-answer hidden"></div>
-      </article>
-
-      <div id="waistReminder" class="card reminder-card hidden">
-        <div>
-          <div class="eyebrow">1× pro Woche</div>
-          <h3>Bauchumfang ist fällig</h3>
-          <p class="muted">Morgens entspannt auf Bauchnabelhöhe messen.</p>
-        </div>
-        <button id="measureWaistNow" class="secondary" type="button">Jetzt eintragen</button>
-      </div>
-
-      <details class="card collapsible-card">
-        <summary>Heute im Detail</summary>
-        <div class="grid-2">
-          <article class="subcard">
-            <div class="card-head">
-              <div><div class="eyebrow">Heutiger Ablauf</div><h3 id="todayWorkoutTitle">Tagesplan</h3></div>
-              <span id="todayDuration" class="pill"></span>
-            </div>
-            <div id="todayPreview" class="stack"></div>
-          </article>
-          <article class="subcard">
-            <div class="card-head"><div><div class="eyebrow">Diese Woche</div><h3>Nur das zählt</h3></div><span id="weekScore" class="pill">0/4</span></div>
-            <div id="weekChecklist" class="checklist"></div>
-          </article>
-        </div>
-      </details>
-
-      <details class="card collapsible-card">
-        <summary>Nächste Progressionen</summary>
-        <div id="nextProgressions" class="progression-grid"></div>
-      </details>
-    </section>
-
-    <section id="train" class="view" data-view>
-      <div class="section-head">
-        <div><div class="eyebrow">Coach-Modus</div><h2>Training</h2></div>
-      </div>
-      <article class="card compact-note">
-        <p class="muted">Standardmäßig führt dich die App durch das heutige Training. Andere Einheiten kannst du jederzeit auswählen – eine offene Einheit sperrt die anderen nicht mehr.</p>
-      </article>
-      <div id="trainingOverview"></div>
-      <details class="card collapsible-card slim-collapse">
-        <summary>Andere Einheit auswählen</summary>
-        <div id="workoutTabs" class="segmented"></div>
-      </details>
-      <div id="guidedCoach" class="hidden"></div>
-      <article id="trainingHistoryCard" class="card training-history-card">
-        <div class="card-head"><div><div class="eyebrow">Verlauf</div><h3>Vergangene Trainings</h3><p class="muted">Öffne eine Einheit und sieh jeden Satz wieder.</p></div><span id="trainingHistoryCount" class="pill">0</span></div>
-        <div id="trainingHistory" class="training-history"></div>
-      </article>
-    </section>
-
-    <section id="food" class="view" data-view>
-      <div class="section-head"><div><div class="eyebrow">Ernährung</div><h2>Food Tracker</h2><p class="muted">Lebensmittel auswählen, Menge eingeben, fertig.</p></div><span id="foodModeBadge" class="mode-badge">CUT</span></div>
-
-      <article class="card guided-food-card prominent">
-        <div><div class="eyebrow">Geführt</div><h3>Essen Schritt für Schritt</h3><p class="muted">Lebensmittel wählen → Menge → automatische Nährwerte → direkte Empfehlung.</p></div>
-        <button id="guidedFoodBtn" class="primary full" type="button">Essen geführt eintragen</button>
-      </article>
-
-      <article class="card food-coach-card prominent">
-        <div class="card-head"><div><div class="eyebrow">Coach heute</div><h3 id="foodCoachTitle">Tagesziel im Blick</h3></div><span id="foodCoachBadge" class="mode-badge">START</span></div>
-        <p id="foodCoachAdvice" class="lead">Trage dein Essen ein. Die App sagt dir danach automatisch, was noch fehlt.</p>
-      </article>
-
-      <article id="foodAiCard" class="card context-ai-card">
-        <div class="card-head"><div><div class="eyebrow">Gemini · Ernährung</div><h3>KI-Tipp zu deinem heutigen Essen</h3></div><span id="foodAiBadge" class="mode-badge light">AUS</span></div>
-        <p id="foodAiAnswer" class="muted">Mit gespeichertem Gemini-Key bekommst du hier direkt einen konkreten Vorschlag passend zu deinen heutigen Makros.</p>
-        <button id="foodAiAsk" class="secondary full" type="button">KI-Ernährungstipp holen</button>
-      </article>
-
-      <div class="food-macro-grid">
-        <article class="card mini macro-card"><div class="eyebrow">Kalorien</div><strong id="foodCalories">0</strong><span id="foodCaloriesLeft">2.300 übrig</span><div class="macro-progress"><i id="foodCaloriesBar"></i></div></article>
-        <article class="card mini macro-card"><div class="eyebrow">Protein</div><strong id="foodProtein">0 g</strong><span id="foodProteinLeft">170 g übrig</span><div class="macro-progress"><i id="foodProteinBar"></i></div></article>
-        <article class="card mini macro-card"><div class="eyebrow">Kohlenhydrate</div><strong id="foodCarbs">0 g</strong><span id="foodCarbsLeft">245 g übrig</span><div class="macro-progress"><i id="foodCarbsBar"></i></div></article>
-        <article class="card mini macro-card"><div class="eyebrow">Fett</div><strong id="foodFat">0 g</strong><span id="foodFatLeft">70 g übrig</span><div class="macro-progress"><i id="foodFatBar"></i></div></article>
-      </div>
-
-      <div class="food-secondary-row">
-        <span><b id="foodFiber">0 g</b> Ballaststoffe <small id="foodFiberLeft">30 g Ziel</small></span>
-        <span><b id="foodWater">0 L</b> Wasser</span>
-        <span><b id="foodCreatine">Nein</b> Creatin</span>
-      </div>
-
-      <article class="card food-search-card">
-        <div class="card-head"><div><div class="eyebrow">Lebensmittel hinzufügen</div><h3>Suchen statt rechnen</h3></div><span class="pill">pro 100 g</span></div>
-        <label class="food-search-label">Lebensmittel suchen
-          <input id="foodSearch" class="food-search-input" type="search" autocomplete="off" placeholder="z. B. Hähnchen, Reis, Skyr, Banane…">
-        </label>
-        <div id="foodSearchResults" class="food-search-results"></div>
-
-        <div id="selectedFoodCard" class="selected-food hidden">
-          <div class="selected-food-head"><div><div class="eyebrow">Ausgewählt</div><h3 id="selectedFoodName">–</h3><small id="selectedFoodPer100" class="muted"></small></div><button id="clearSelectedFood" class="small-btn" type="button">×</button></div>
-          <div class="food-add-grid">
-            <label>Menge <div class="amount-input"><input id="foodAmount" type="number" step="1" min="1" inputmode="numeric" value="100"><span id="foodAmountUnit">g</span></div></label>
-            <div class="food-live-calc"><b id="selectedFoodCalories">0 kcal</b><span id="selectedFoodMacros">0 P · 0 KH · 0 F</span></div>
-          </div>
-          <div id="foodQuickPortions" class="chip-row"></div>
-          <button id="addSelectedFood" class="primary full" type="button">Zum heutigen Essen hinzufügen</button>
-        </div>
-
-        <div class="eyebrow section-label">Häufig / zuletzt</div>
-        <div id="recentFoods" class="food-quick-grid"></div>
-      </article>
-
-      <article class="card">
-        <div class="card-head"><div><div class="eyebrow">Heute</div><h3>Was du gegessen hast</h3></div><button id="clearMeals" class="small-btn danger" type="button">Tag leeren</button></div>
-        <div id="mealList" class="stack"></div>
-      </article>
-
-      <details class="card collapsible-card">
-        <summary>Eigene / verpackte Lebensmittel</summary>
-        <p class="muted">Für Produkte, die nicht in der Datenbank sind. Werte vom Etikett pro Portion eintragen.</p>
-        <form id="mealForm" class="form-grid">
-          <label class="span-2">Name<input id="mealName" placeholder="z. B. Protein-Milchreis Marke X"></label>
-          <label>Kalorien<input id="mealCalories" type="number" step="1" inputmode="numeric"></label>
-          <label>Protein g<input id="mealProtein" type="number" step="0.1" inputmode="decimal"></label>
-          <label>Kohlenhydrate g<input id="mealCarbs" type="number" step="0.1" inputmode="decimal"></label>
-          <label>Fett g<input id="mealFat" type="number" step="0.1" inputmode="decimal"></label>
-          <label>Ballaststoffe g<input id="mealFiber" type="number" step="0.1" inputmode="decimal"></label>
-          <button class="primary span-2" type="submit">Eigene Portion hinzufügen</button>
-        </form>
-      </details>
-
-      <details class="card collapsible-card">
-        <summary>Ernährungsregeln & Supplements</summary>
-        <div class="meal-template-grid">
-          <div><b>12:00</b><span>Körniger Frischkäse/Skyr + Protein-Milchreis + Obst</span><small>≈ 50–60 g Protein</small></div>
-          <div><b>15–16 Uhr</b><span>Whey-Isolat/laktosefrei + Banane/Hafer bei Training</span><small>≈ 25–35 g Protein</small></div>
-          <div><b>18:00</b><span>200–250 g halal Hähnchen/Fisch/Rind + Reis/Kartoffeln + Gemüse</span><small>≈ 50–70 g Protein</small></div>
-          <div><b>Falls nötig</b><span>Laktosefreier Skyr/Quark oder kleiner Shake</span><small>Proteinlücke schließen</small></div>
-        </div>
-        <div class="coach-tip" style="margin-top:12px"><b>Werte in der Lebensmitteldatenbank sind Richtwerte.</b> Bei verpackten Lebensmitteln gilt das Etikett. Halal einkaufen; wegen Laktoseintoleranz laktosefreie Produkte/Whey-Isolat wählen. Wochenende, Döner und Restaurant zählen normal ins Wochenbudget.</div>
-      </details>
-
-      <article id="vacationCard" class="card vacation-card">
-        <div><div class="eyebrow">All-inclusive Woche</div><h3>Urlaubsmodus</h3><p>Kein aggressiver Cut: Protein priorisieren, Wasser/Zero, 2–3 kurze Bodyweight-Einheiten.</p></div>
-        <button id="toggleVacation" class="secondary" type="button">Aktivieren</button>
-      </article>
-    </section>
-
-    <section id="stats" class="view" data-view>
-      <div class="section-head"><div><div class="eyebrow">Fortschritt</div><h2>Statistik</h2></div></div>
-      <div class="grid-4 metric-grid">
-        <article class="card mini"><div class="eyebrow">7-Tage Gewicht</div><strong id="statWeightAvg">–</strong><span>kg</span></article>
-        <article class="card mini"><div class="eyebrow">Taille zuletzt</div><strong id="statWaist">–</strong><span>cm</span></article>
-        <article class="card mini"><div class="eyebrow">Pull-up PR</div><strong id="statPullPR">2</strong><span>sauber</span></article>
-        <article class="card mini"><div class="eyebrow">Handstand PR</div><strong id="statHsPR">5</strong><span>Sekunden</span></article>
-      </div>
-
-      <article class="card">
-        <div class="card-head"><div><div class="eyebrow">Coach Review</div><h3>Die letzten 14 Tage</h3></div><span id="trendBadge" class="mode-badge">–</span></div>
-        <div id="weeklyReview" class="review-box"></div>
-      </article>
-
-      <div class="grid-2">
-        <article class="card"><div class="card-head"><div><div class="eyebrow">Körper</div><h3>Gewicht + 7-Tage-Schnitt</h3></div></div><canvas id="weightChart" width="900" height="360"></canvas></article>
-        <article class="card"><div class="card-head"><div><div class="eyebrow">Körper</div><h3>Bauchumfang</h3></div></div><canvas id="waistChart" width="900" height="360"></canvas></article>
-      </div>
-      <div class="grid-2">
-        <article class="card"><div class="card-head"><div><div class="eyebrow">Recovery</div><h3>Schlaf</h3></div></div><canvas id="sleepChart" width="900" height="360"></canvas></article>
-        <article class="card"><div class="card-head"><div><div class="eyebrow">Leistung</div><h3>Pull-ups & Handstand</h3></div></div><canvas id="strengthChart" width="900" height="360"></canvas></article>
-      </div>
-
-      <details class="card collapsible-card">
-        <summary>Messungen eintragen</summary>
-        <div class="grid-2 nested-grid">
-          <article class="subcard">
-            <div class="card-head"><div><div class="eyebrow">Wöchentliche Messung</div><h3>Bauchumfang</h3></div></div>
-            <form id="waistForm" class="form-grid">
-              <label>Datum<input id="wDate" type="date"></label>
-              <label>Bauch cm<input id="wWaist" type="number" step="0.1" inputmode="decimal" placeholder="z. B. 96,5"></label>
-              <button class="primary span-2" type="submit">Bauchumfang speichern</button>
-            </form>
-          </article>
-          <article class="subcard">
-            <div class="card-head"><div><div class="eyebrow">Leistungstest</div><h3>Alle 2–4 Wochen</h3></div></div>
-            <form id="strengthForm" class="form-grid">
-              <label>Datum<input id="sDate" type="date"></label>
-              <label>Pull-ups Max<input id="sPullups" type="number" step="1" inputmode="numeric"></label>
-              <label>Dips Max<input id="sDips" type="number" step="1" inputmode="numeric"></label>
-              <label>Freier Handstand s<input id="sHs" type="number" step="1" inputmode="numeric"></label>
-              <label>Dead Hang s<input id="sHang" type="number" step="1" inputmode="numeric"></label>
-              <label>Wall HSPU<input id="sHspu" type="number" step="1" inputmode="numeric"></label>
-              <button class="primary span-2" type="submit">Leistung speichern</button>
-            </form>
-          </article>
-        </div>
-      </details>
-
-      <article class="card">
-        <div class="card-head"><div><div class="eyebrow">Foto-Timeline</div><h3>Alle 4 Wochen</h3></div></div>
-        <div class="photo-upload-grid">
-          <label class="photo-slot"><span>Vorne</span><img alt="Vorne Vorschau"><input id="photoFront" type="file" accept="image/*" capture="environment"></label>
-          <label class="photo-slot"><span>Seite</span><img alt="Seite Vorschau"><input id="photoSide" type="file" accept="image/*" capture="environment"></label>
-          <label class="photo-slot"><span>Rücken</span><img alt="Rücken Vorschau"><input id="photoBack" type="file" accept="image/*" capture="environment"></label>
-        </div>
-        <button id="savePhotoSet" class="primary full" type="button">Fotosatz speichern</button>
-        <div id="photoTimeline" class="photo-timeline"></div>
-      </article>
-    </section>
-
-    <section id="skills" class="view" data-view>
-      <div class="section-head"><div><div class="eyebrow">Skills</div><h2>Handstand → HSPU → später Flag</h2></div></div>
-      <article class="card">
-        <div class="card-head"><div><div class="eyebrow">Diese Woche</div><h3>Handstand-Frequenz</h3></div><span class="pill">4× kurz</span></div>
-        <p class="muted">Montag 8 Min · Mittwoch 5–10 Min · Donnerstag 8 Min · Samstag 5–15 Min.</p>
-        <div id="handstandDays" class="hs-days"></div>
-        <button id="startSkillTimer" class="primary full" type="button">Geführte Handstand-Session starten</button>
-      </article>
-      <div id="skillTree" class="skill-tree"></div>
-      <article class="card">
-        <div class="card-head"><div><div class="eyebrow">Human Flag</div><h3>Wann wir sie ernsthaft starten</h3></div><span id="flagLock" class="mode-badge">LOCKED</span></div>
-        <p id="flagText">Erst 8–10 strikte Pull-ups, stabile Schulter, Core und Straight-arm-Kraft.</p>
-      </article>
-    </section>
-
-    <section id="roadmap" class="view" data-view>
-      <div class="section-head"><div><div class="eyebrow">Langfristig</div><h2>Dein 12+ Monats-Weg</h2></div><span id="currentPhaseBadge" class="mode-badge">PHASE 1</span></div>
-      <div id="roadmapCards" class="roadmap-grid"></div>
-      <div class="grid-2">
-        <article class="card">
-          <div class="card-head"><div><div class="eyebrow">Körperfokus</div><h3>So entsteht der Look</h3></div></div>
-          <div class="phase-criteria">
-            <div><span>1</span><span>Latissimus breiter → stärkerer V-Taper.</span></div>
-            <div><span>2</span><span>Seitliche/hintere Schulter → breitere Optik.</span></div>
-            <div><span>3</span><span>Obere Brust + Trizeps → kräftiger statt nur dünn.</span></div>
-            <div><span>4</span><span>Taille langsam reduzieren → Definition sichtbar machen.</span></div>
-          </div>
-        </article>
-        <article class="card">
-          <div class="card-head"><div><div class="eyebrow">Regeneration</div><h3>Dein Engpass</h3></div></div>
-          <div class="phase-criteria">
-            <div><span>•</span><span id="roadmapSleepText">Schlaf prüfen und Trainingsvolumen daran anpassen.</span></div>
-            <div><span>•</span><span>Home C darf ausfallen, wenn du platt bist.</span></div>
-            <div><span>•</span><span>Keine dauernden Maximalversuche.</span></div>
-          </div>
-        </article>
-      </div>
-      <article class="card">
-        <div class="card-head"><div><div class="eyebrow">Kraft-Meilensteine</div><h3>Wohin wir wollen</h3></div></div>
-        <div id="milestones" class="milestone-list"></div>
-      </article>
-      <article class="card">
-        <div class="card-head"><div><div class="eyebrow">Cardio</div><h3>Joggen ohne Kraft zu sabotieren</h3></div><span id="runWeek" class="pill">0/1</span></div>
-        <p id="runAdvice">Start: 1× pro Woche 20–30 Minuten sehr locker.</p>
-        <button id="logRunBtn" class="secondary" type="button">25 Min lockeren Lauf loggen</button>
-        <span id="runStatus" class="status"></span>
-      </article>
-    </section>
-
-    <section id="settings" class="view" data-view>
-      <div class="section-head"><div><div class="eyebrow">App</div><h2>Mehr & Einstellungen</h2></div><span class="pill">V4.3</span></div>
-      <article class="card">
-        <div class="card-head"><div><div class="eyebrow">Planwerte</div><h3>Deine Basis</h3></div></div>
-        <div class="settings-grid">
-          <div><span>Kalorien</span><b id="settingCalories">–</b></div>
-          <div><span>Protein</span><b id="settingProtein">–</b></div>
-          <div><span>Creatin</span><b id="settingCreatine">–</b></div>
-          <div><span>Bänder</span><b id="settingBands">–</b></div>
-          <div><span>Training</span><b id="settingTrainingDays">–</b></div>
-          <div><span>Schlaf typisch</span><b id="settingSleep">–</b></div>
-        </div>
-      </article>
-
-      <details class="card collapsible-card">
-        <summary>Profil & Zielrahmen</summary>
-        <div class="settings-grid" style="margin-top:12px">
-          <div><span>Profil</span><b id="profileSummary">–</b></div>
-          <div><span>Startpunkt</span><b id="profileStart">–</b></div>
-          <div><span>Priorität</span><b id="profileGoal">–</b></div>
-          <div><span>Skills</span><b>Handstand/HSPU zuerst</b></div>
-          <div><span>Ernährung</span><b id="profileDiet">–</b></div>
-          <div><span>Phase 1</span><b id="profilePhase">–</b></div>
-        </div>
-      </details>
-
-      <article class="card">
-        <div class="card-head"><div><div class="eyebrow">Zusatzbereiche</div><h3>Nur wenn du sie brauchst</h3></div></div>
-        <div class="action-row compact-row">
-          <button class="secondary grow" data-nav="skills" type="button">Skills öffnen</button>
-          <button class="secondary grow" data-nav="roadmap" type="button">Langfristigen Plan öffnen</button>
-        </div>
-      </article>
-
-      <article class="card">
-        <div class="card-head"><div><div class="eyebrow">Profil</div><h3>Geführtes Setup</h3></div></div>
-        <p class="muted">Jede Person, die den Link auf einem neuen Gerät öffnet, startet mit einem eigenen Profil von null.</p>
-        <div class="action-row compact-row">
-          <button id="editProfileBtn" class="secondary grow" type="button">Profil-Fragen erneut starten</button>
-          <button id="newProfileBtn" class="danger-btn grow" type="button">Neues Profil auf diesem Gerät</button>
-        </div>
-      </article>
-
-
-      <article class="card ai-settings-card">
-        <div class="card-head"><div><div class="eyebrow">KI Coach</div><h3>Eigener Gemini API-Key</h3></div><span id="geminiConnectionBadge" class="mode-badge">NICHT VERBUNDEN</span></div>
-        <p class="muted">Jede Person trägt ihren eigenen Key ein. Er wird nur auf diesem Gerät gespeichert und niemals in dein App-Backup geschrieben.</p>
-        <label class="ai-key-label">Gemini API-Key
-          <div class="ai-key-row"><input id="geminiApiKey" type="password" autocomplete="off" spellcheck="false" placeholder="AIza…"><button id="toggleGeminiKey" class="small-btn" type="button">Anzeigen</button></div>
-        </label>
-        <div class="action-row compact-row" style="margin-top:10px">
-          <button id="saveGeminiKey" class="primary grow" type="button">Key lokal speichern</button>
-          <button id="testGeminiKey" class="secondary grow" type="button">Verbindung testen</button>
-          <button id="deleteGeminiKey" class="danger-btn grow" type="button">Key löschen</button>
-        </div>
-        <div id="geminiKeyMessage" class="status"></div>
-        <div class="ai-auto-grid">
-          <label><input id="aiAutoDaily" type="checkbox"> <span><b>Tagescheck automatisch</b><small>KI analysiert den fertigen Recovery-Check.</small></span></label>
-          <label><input id="aiAutoTraining" type="checkbox"> <span><b>Training automatisch</b><small>Kurzer KI-Tipp nach jedem Satz + Zusammenfassung am Ende.</small></span></label>
-          <label><input id="aiAutoFood" type="checkbox"> <span><b>Essen automatisch</b><small>Nach einem neuen Essen direkt einen Tages-Tipp erzeugen.</small></span></label>
-        </div>
-        <details class="inline-details" style="margin-top:12px">
-          <summary>Sicherheit & kostenlose Nutzung</summary>
-          <p class="muted" style="margin-top:10px">Diese statische GitHub-App sendet deinen Key direkt aus deinem Browser an Google. Das ist bequem für „Bring your own key“, aber weniger sicher als ein Backend. Nutze deshalb einen separaten, auf Gemini beschränkten Key und aktiviere keine Abrechnung, wenn du garantiert im Free Tier bleiben willst. Daten aus der kostenlosen Gemini-Stufe können von Google zur Produktverbesserung verwendet werden.</p>
-          <a class="secondary ai-link" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Key in Google AI Studio erstellen</a>
         </details>
-      </article>
+      </section>
 
-      <article class="card">
-        <div class="card-head"><div><div class="eyebrow">Daten</div><h3>Bleiben auf diesem Gerät</h3></div></div>
-        <p class="muted">Gewicht, Essen, Training und Fotos werden lokal gespeichert. Exportiere regelmäßig ein Backup.</p>
-        <div class="action-row compact-row">
-          <button id="exportBtn" class="secondary" type="button">Backup exportieren</button>
-          <label class="file-btn">Backup importieren<input id="importFile" type="file" accept="application/json"></label>
-          <button id="resetBtn" class="danger-btn" type="button">Alle Daten löschen</button>
+      <section id="todayCoach" class="workout-hero surface">
+        <div class="workout-hero-top">
+          <div>
+            <p class="section-label">Heute dran</p>
+            <h2 id="coachTitle">Tagesplan</h2>
+          </div>
+          <span id="coachMode" class="mode-badge">CHECK</span>
         </div>
-      </article>
+        <p id="coachText" class="support-copy workout-copy">Recovery-Check ausfüllen, danach bekommst du deine klare Empfehlung.</p>
+        <div class="hero-actions">
+          <button id="openTodayWorkout" class="primary full" type="button">Training starten</button>
+          <button id="quickHandstandBtn" class="primary full hidden" type="button">Handstand starten</button>
+        </div>
+        <details class="quiet-details hero-details">
+          <summary>Warum diese Empfehlung?</summary>
+          <div id="coachBullets" class="coach-bullets"></div>
+        </details>
+      </section>
+
+      <section class="surface nutrition-glance">
+        <div class="surface-row align-center">
+          <div>
+            <p class="section-label">Ernährung</p>
+            <h2>Heute</h2>
+          </div>
+          <button class="text-action" data-nav="food" type="button">Eintragen</button>
+        </div>
+        <div class="nutrition-inline">
+          <div><strong id="todayCalories">0</strong><span id="todayCaloriesGoal">kcal</span></div>
+          <div><strong id="todayProtein">0</strong><span id="todayProteinGoal">g Protein</span></div>
+        </div>
+        <div class="progress-track"><span id="calProgress"></span></div>
+        <p id="nutritionCoach" class="micro-copy">Noch nichts eingetragen.</p>
+        <div id="todayMealPresets" class="quick-presets compact-presets"></div>
+      </section>
+
+      <details id="aiCoachCard" class="surface accordion-card ai-accordion">
+        <summary>
+          <span class="summary-icon">✦</span>
+          <span><b>KI Coach fragen</b><small>Training, Recovery oder Essen</small></span>
+          <span id="aiCoachStatus" class="mode-badge subtle">AUS</span>
+        </summary>
+        <div class="accordion-body">
+          <p id="aiCoachHint" class="support-copy">Mit deinem eigenen Gemini-Key kannst du deine Daten analysieren lassen.</p>
+          <div id="aiQuickPrompts" class="chip-row compact-chips">
+            <button type="button" data-ai-prompt="today">Heute beachten</button>
+            <button type="button" data-ai-prompt="training">Training bewerten</button>
+            <button type="button" data-ai-prompt="food">Essen planen</button>
+          </div>
+          <div class="ai-chat-row">
+            <textarea id="aiCoachQuestion" rows="2" placeholder="Frage an deinen Coach …"></textarea>
+            <button id="aiCoachAsk" class="primary" type="button">Senden</button>
+          </div>
+          <div id="aiCoachAnswer" class="ai-answer hidden"></div>
+        </div>
+      </details>
+
+      <div id="waistReminder" class="surface reminder-card hidden">
+        <div><p class="section-label">Wöchentlicher Check</p><h3>Bauchumfang messen</h3><p class="micro-copy">Morgens entspannt auf Bauchnabelhöhe.</p></div>
+        <button id="measureWaistNow" class="secondary" type="button">Eintragen</button>
+      </div>
+
+      <details class="surface accordion-card">
+        <summary><span class="summary-icon">≡</span><span><b>Details zum heutigen Plan</b><small>Übungen, Woche und Progression</small></span></summary>
+        <div class="accordion-body">
+          <div class="detail-block">
+            <div class="surface-row"><div><p class="section-label">Ablauf</p><h3 id="todayWorkoutTitle">Tagesplan</h3></div><span id="todayDuration" class="pill"></span></div>
+            <div id="todayPreview" class="stack"></div>
+          </div>
+          <div class="detail-block">
+            <div class="surface-row"><div><p class="section-label">Diese Woche</p><h3>Planstatus</h3></div><span id="weekScore" class="pill">0/4</span></div>
+            <div id="weekChecklist" class="checklist"></div>
+          </div>
+          <div class="detail-block"><p class="section-label">Nächste Progressionen</p><div id="nextProgressions" class="progression-grid"></div></div>
+        </div>
+      </details>
+
+      <div class="hidden-data" aria-hidden="true">
+        <span id="heroWeight">–</span><span id="heroPullups">–</span><span id="heroHs">–</span><span id="heroWeek">–</span>
+      </div>
+    </section>
+
+    <!-- TRAINING -->
+    <section id="train" class="view" data-view>
+      <header class="screen-header">
+        <div><p class="screen-kicker">Geführt</p><h1>Training</h1></div>
+      </header>
+      <div id="trainingOverview"></div>
+      <div id="guidedCoach" class="hidden"></div>
+
+      <details class="surface accordion-card compact-accordion">
+        <summary><span class="summary-icon">⇄</span><span><b>Andere Einheit</b><small>Montag, Donnerstag oder Home</small></span></summary>
+        <div class="accordion-body"><div id="workoutTabs" class="segmented"></div></div>
+      </details>
+
+      <details id="trainingHistoryCard" class="surface accordion-card training-history-card">
+        <summary><span class="summary-icon">↺</span><span><b>Vergangene Trainings</b><small>Alle Sätze ansehen, vergleichen oder löschen</small></span><span id="trainingHistoryCount" class="pill">0</span></summary>
+        <div class="accordion-body"><div id="trainingHistory" class="training-history"></div></div>
+      </details>
+    </section>
+
+    <!-- FOOD -->
+    <section id="food" class="view" data-view>
+      <header class="screen-header">
+        <div><p class="screen-kicker">Heute</p><h1>Essen</h1></div>
+        <span id="foodModeBadge" class="mode-badge">CUT</span>
+      </header>
+
+      <section class="surface macro-summary">
+        <div class="macro-summary-grid">
+          <div class="macro-main"><strong id="foodCalories">0</strong><span>kcal</span><small id="foodCaloriesLeft">– übrig</small></div>
+          <div><strong id="foodProtein">0 g</strong><span>Protein</span><small id="foodProteinLeft">–</small></div>
+          <div><strong id="foodCarbs">0 g</strong><span>KH</span><small id="foodCarbsLeft">–</small></div>
+          <div><strong id="foodFat">0 g</strong><span>Fett</span><small id="foodFatLeft">–</small></div>
+        </div>
+        <div class="macro-bars" aria-hidden="true">
+          <i><b id="foodCaloriesBar"></b></i><i><b id="foodProteinBar"></b></i><i><b id="foodCarbsBar"></b></i><i><b id="foodFatBar"></b></i>
+        </div>
+        <div class="food-secondary-row compact-secondary">
+          <span><b id="foodFiber">0 g</b><small id="foodFiberLeft">Ballaststoffe</small></span>
+          <span><b id="foodWater">0 L</b><small>Wasser</small></span>
+          <span><b id="foodCreatine">Nein</b><small>Creatin</small></span>
+        </div>
+      </section>
+
+      <section id="aiMealEntryCard" class="surface ai-meal-entry-card">
+        <div class="surface-row align-center">
+          <div><p class="section-label accent">KI Schnell-Eintrag</p><h2>Beschreib einfach dein Essen</h2></div>
+          <span id="aiMealEntryBadge" class="mode-badge subtle">AUS</span>
+        </div>
+        <textarea id="aiMealText" class="ai-meal-text" rows="3" placeholder="z. B. 3 Eier, 250 g Nudeln und etwas Gemüse mit Sahnesoße"></textarea>
+        <button id="aiMealAnalyzeBtn" class="primary full" type="button">Analysieren & eintragen</button>
+        <div id="aiMealFlow" class="ai-meal-flow hidden" aria-live="polite"></div>
+      </section>
+
+      <section class="surface meals-today">
+        <div class="surface-row align-center">
+          <div><p class="section-label">Heute gegessen</p><h2>Mahlzeiten</h2></div>
+          <button id="clearMeals" class="text-action danger-text" type="button">Leeren</button>
+        </div>
+        <div id="mealList" class="stack meal-stack"></div>
+      </section>
+
+      <details class="surface accordion-card food-methods">
+        <summary><span class="summary-icon">＋</span><span><b>Anders eintragen</b><small>Geführt oder Lebensmittel suchen</small></span></summary>
+        <div class="accordion-body">
+          <button id="guidedFoodBtn" class="secondary full" type="button">Geführt eintragen</button>
+          <div class="divider-line"><span>oder</span></div>
+          <div class="food-search-card">
+            <label class="field-label">Lebensmittel suchen<input id="foodSearch" class="food-search-input" type="search" autocomplete="off" placeholder="Hähnchen, Reis, Skyr …"></label>
+            <div id="foodSearchResults" class="food-search-results"></div>
+            <div id="selectedFoodCard" class="selected-food hidden">
+              <div class="selected-food-head"><div><p class="section-label">Ausgewählt</p><h3 id="selectedFoodName">–</h3><small id="selectedFoodPer100" class="micro-copy"></small></div><button id="clearSelectedFood" class="icon-button" type="button" aria-label="Schließen">×</button></div>
+              <div class="food-add-grid">
+                <label class="field-label">Menge<div class="amount-input"><input id="foodAmount" type="number" step="1" min="1" inputmode="numeric" value="100"><span id="foodAmountUnit">g</span></div></label>
+                <div class="food-live-calc"><b id="selectedFoodCalories">0 kcal</b><span id="selectedFoodMacros">0 P · 0 KH · 0 F</span></div>
+              </div>
+              <div id="foodQuickPortions" class="chip-row compact-chips"></div>
+              <button id="addSelectedFood" class="primary full" type="button">Hinzufügen</button>
+            </div>
+            <div class="subsection-label">Zuletzt</div>
+            <div id="recentFoods" class="food-quick-grid"></div>
+          </div>
+        </div>
+      </details>
+
+      <details class="surface accordion-card">
+        <summary><span class="summary-icon">✦</span><span><b>Ernährungscoach</b><small>Was heute noch sinnvoll ist</small></span><span id="foodCoachBadge" class="mode-badge subtle">START</span></summary>
+        <div class="accordion-body">
+          <h3 id="foodCoachTitle">Tagesziel im Blick</h3>
+          <p id="foodCoachAdvice" class="support-copy">Trage dein Essen ein. Danach bekommst du eine klare Empfehlung.</p>
+          <div id="foodAiCard" class="context-ai-card minimal-ai-box">
+            <div class="surface-row align-center"><p class="section-label accent">Gemini</p><span id="foodAiBadge" class="mode-badge subtle">AUS</span></div>
+            <p id="foodAiAnswer" class="micro-copy">Mit Gemini-Key bekommst du einen konkreten Tipp.</p>
+            <button id="foodAiAsk" class="secondary full" type="button">KI-Tipp holen</button>
+          </div>
+        </div>
+      </details>
+
+      <details class="surface accordion-card">
+        <summary><span class="summary-icon">⌁</span><span><b>Eigene Lebensmittel</b><small>Werte vom Etikett pro Portion</small></span></summary>
+        <div class="accordion-body">
+          <form id="mealForm" class="form-grid">
+            <label class="span-2">Name<input id="mealName" placeholder="z. B. Protein-Milchreis"></label>
+            <label>Kalorien<input id="mealCalories" type="number" step="1" inputmode="numeric"></label>
+            <label>Protein g<input id="mealProtein" type="number" step="0.1" inputmode="decimal"></label>
+            <label>Kohlenhydrate g<input id="mealCarbs" type="number" step="0.1" inputmode="decimal"></label>
+            <label>Fett g<input id="mealFat" type="number" step="0.1" inputmode="decimal"></label>
+            <label>Ballaststoffe g<input id="mealFiber" type="number" step="0.1" inputmode="decimal"></label>
+            <button class="primary span-2" type="submit">Portion hinzufügen</button>
+          </form>
+        </div>
+      </details>
+
+      <details class="surface accordion-card">
+        <summary><span class="summary-icon">i</span><span><b>Ernährungsregeln</b><small>Supplements, Alltag und Urlaub</small></span></summary>
+        <div class="accordion-body">
+          <div class="rule-list">
+            <div><b>Protein zuerst</b><span>Jede Hauptmahlzeit mit einer klaren Proteinquelle.</span></div>
+            <div><b>Etikett schlägt Schätzung</b><span>Bei verpackten Lebensmitteln immer die Packungswerte nutzen.</span></div>
+            <div><b>Creatin</b><span>5 g täglich, unabhängig vom Training.</span></div>
+          </div>
+          <article id="vacationCard" class="vacation-card inner-panel"><div><p class="section-label">Urlaubsmodus</p><h3>All-inclusive Woche</h3><p class="micro-copy">Protein priorisieren, Wasser/Zero, kein aggressiver Cut.</p></div><button id="toggleVacation" class="secondary" type="button">Aktivieren</button></article>
+        </div>
+      </details>
+    </section>
+
+    <!-- PROGRESS -->
+    <section id="stats" class="view" data-view>
+      <header class="screen-header">
+        <div><p class="screen-kicker">Entwicklung</p><h1>Fortschritt</h1></div>
+      </header>
+
+      <section class="metric-strip">
+        <article class="metric-tile"><span>7-Tage Gewicht</span><strong id="statWeightAvg">–</strong><small>kg</small></article>
+        <article class="metric-tile"><span>Taille</span><strong id="statWaist">–</strong><small>cm</small></article>
+        <article class="metric-tile"><span>Pull-up PR</span><strong id="statPullPR">2</strong><small>sauber</small></article>
+        <article class="metric-tile"><span>Handstand PR</span><strong id="statHsPR">5</strong><small>Sek.</small></article>
+      </section>
+
+      <section class="surface chart-card">
+        <div class="surface-row align-center"><div><p class="section-label">Verlauf</p><h2>Deine Trends</h2></div></div>
+        <div class="stats-tabs" role="tablist">
+          <button class="active" type="button" data-stat-tab="weight">Gewicht</button>
+          <button type="button" data-stat-tab="waist">Taille</button>
+          <button type="button" data-stat-tab="sleep">Schlaf</button>
+          <button type="button" data-stat-tab="strength">Kraft</button>
+        </div>
+        <div class="chart-panels">
+          <div class="chart-panel active" data-stat-panel="weight"><canvas id="weightChart" width="900" height="360"></canvas></div>
+          <div class="chart-panel" data-stat-panel="waist"><canvas id="waistChart" width="900" height="360"></canvas></div>
+          <div class="chart-panel" data-stat-panel="sleep"><canvas id="sleepChart" width="900" height="360"></canvas></div>
+          <div class="chart-panel" data-stat-panel="strength"><canvas id="strengthChart" width="900" height="360"></canvas></div>
+        </div>
+      </section>
+
+      <details class="surface accordion-card">
+        <summary><span class="summary-icon">✦</span><span><b>Coach Review</b><small>Die letzten 14 Tage</small></span><span id="trendBadge" class="mode-badge subtle">–</span></summary>
+        <div class="accordion-body"><div id="weeklyReview" class="review-box"></div></div>
+      </details>
+
+      <details class="surface accordion-card">
+        <summary><span class="summary-icon">＋</span><span><b>Messung eintragen</b><small>Taille oder Leistungstest</small></span></summary>
+        <div class="accordion-body form-sections">
+          <div class="form-section"><p class="section-label">Bauchumfang</p><form id="waistForm" class="form-grid"><label>Datum<input id="wDate" type="date"></label><label>Bauch cm<input id="wWaist" type="number" step="0.1" inputmode="decimal" placeholder="96,5"></label><button class="primary span-2" type="submit">Speichern</button></form></div>
+          <div class="form-section"><p class="section-label">Leistungstest</p><form id="strengthForm" class="form-grid"><label>Datum<input id="sDate" type="date"></label><label>Pull-ups Max<input id="sPullups" type="number" step="1" inputmode="numeric"></label><label>Dips Max<input id="sDips" type="number" step="1" inputmode="numeric"></label><label>Handstand s<input id="sHs" type="number" step="1" inputmode="numeric"></label><label>Dead Hang s<input id="sHang" type="number" step="1" inputmode="numeric"></label><label>Wall HSPU<input id="sHspu" type="number" step="1" inputmode="numeric"></label><button class="primary span-2" type="submit">Leistung speichern</button></form></div>
+        </div>
+      </details>
+
+      <details class="surface accordion-card photo-card">
+        <summary><span class="summary-icon">▣</span><span><b>Fortschrittsfotos</b><small>Alle 4 Wochen unter gleichen Bedingungen</small></span></summary>
+        <div class="accordion-body">
+          <div class="photo-upload-grid">
+            <label class="photo-slot"><span>Vorne</span><img alt="Vorne Vorschau"><input id="photoFront" type="file" accept="image/*" capture="environment"></label>
+            <label class="photo-slot"><span>Seite</span><img alt="Seite Vorschau"><input id="photoSide" type="file" accept="image/*" capture="environment"></label>
+            <label class="photo-slot"><span>Rücken</span><img alt="Rücken Vorschau"><input id="photoBack" type="file" accept="image/*" capture="environment"></label>
+          </div>
+          <button id="savePhotoSet" class="primary full" type="button">Fotosatz speichern</button>
+          <div id="photoTimeline" class="photo-timeline"></div>
+        </div>
+      </details>
+    </section>
+
+    <!-- SKILLS -->
+    <section id="skills" class="view" data-view>
+      <header class="screen-header subpage-header"><button class="back-link" data-nav="settings" type="button">‹</button><div><p class="screen-kicker">Skills</p><h1>Skill-Pfad</h1></div></header>
+      <section class="surface skill-focus-card">
+        <div class="surface-row align-center"><div><p class="section-label">Diese Woche</p><h2>Handstand</h2></div><span class="pill">4× kurz</span></div>
+        <p class="support-copy">Montag · Mittwoch · Donnerstag · Wochenende. Kurz und frisch statt ermüdet.</p>
+        <div id="handstandDays" class="hs-days"></div>
+        <button id="startSkillTimer" class="primary full" type="button">Handstand-Session starten</button>
+      </section>
+      <div id="skillTree" class="skill-tree"></div>
+      <section class="surface locked-skill"><div class="surface-row align-center"><div><p class="section-label">Später</p><h2>Human Flag</h2></div><span id="flagLock" class="mode-badge subtle">LOCKED</span></div><p id="flagText" class="support-copy">Erst 8–10 strikte Pull-ups, stabile Schulter und Straight-arm-Kraft.</p></section>
+    </section>
+
+    <!-- ROADMAP -->
+    <section id="roadmap" class="view" data-view>
+      <header class="screen-header subpage-header"><button class="back-link" data-nav="settings" type="button">‹</button><div><p class="screen-kicker">Langfristig</p><h1>Roadmap</h1></div><span id="currentPhaseBadge" class="mode-badge">PHASE 1</span></header>
+      <div id="roadmapCards" class="roadmap-grid"></div>
+      <details class="surface accordion-card"><summary><span class="summary-icon">◎</span><span><b>Meilensteine</b><small>Kraftziele, die den Skill-Weg freischalten</small></span></summary><div class="accordion-body"><div id="milestones" class="milestone-list"></div></div></details>
+      <details class="surface accordion-card"><summary><span class="summary-icon">↗</span><span><b>Cardio</b><small>Joggen ohne Kraft zu sabotieren</small></span><span id="runWeek" class="pill">0/1</span></summary><div class="accordion-body"><p id="runAdvice" class="support-copy">Start: 1× pro Woche 20–30 Minuten locker.</p><button id="logRunBtn" class="secondary full" type="button">25 Min lockeren Lauf loggen</button><span id="runStatus" class="status"></span></div></details>
+      <details class="surface accordion-card"><summary><span class="summary-icon">i</span><span><b>Körper & Regeneration</b><small>Die zwei wichtigsten Leitplanken</small></span></summary><div class="accordion-body rule-list"><div><b>V-Taper & Definition</b><span>Lat, Schulter, obere Brust und Taille langsam optimieren.</span></div><div><b>Regeneration</b><span id="roadmapSleepText">Schlaf prüfen und Volumen daran anpassen.</span></div></div></details>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="settings" class="view" data-view>
+      <header class="screen-header">
+        <div><p class="screen-kicker">Cal Coach · V5</p><h1>Mehr</h1></div>
+      </header>
+
+      <section class="settings-list surface">
+        <button class="settings-row" data-nav="skills" type="button"><span class="settings-icon">◎</span><span><b>Skills</b><small>Handstand, HSPU und später Human Flag</small></span><i>›</i></button>
+        <button class="settings-row" data-nav="roadmap" type="button"><span class="settings-icon">↗</span><span><b>Roadmap</b><small>Langfristige Kraft- und Körperziele</small></span><i>›</i></button>
+      </section>
+
+      <details class="surface accordion-card settings-accordion">
+        <summary><span class="summary-icon">◉</span><span><b>Profil & Ziele</b><small id="profileSummary">–</small></span></summary>
+        <div class="accordion-body">
+          <div class="settings-grid compact-settings">
+            <div><span>Startpunkt</span><b id="profileStart">–</b></div>
+            <div><span>Priorität</span><b id="profileGoal">–</b></div>
+            <div><span>Ernährung</span><b id="profileDiet">–</b></div>
+            <div><span>Phase 1</span><b id="profilePhase">–</b></div>
+          </div>
+          <div class="action-stack"><button id="editProfileBtn" class="secondary full" type="button">Profil-Fragen bearbeiten</button><button id="newProfileBtn" class="text-action danger-text full" type="button">Neues Profil auf diesem Gerät</button></div>
+        </div>
+      </details>
+
+      <details class="surface accordion-card settings-accordion">
+        <summary><span class="summary-icon">⌁</span><span><b>Planwerte</b><small>Kalorien, Protein, Training und Bänder</small></span></summary>
+        <div class="accordion-body"><div class="settings-grid compact-settings"><div><span>Kalorien</span><b id="settingCalories">–</b></div><div><span>Protein</span><b id="settingProtein">–</b></div><div><span>Creatin</span><b id="settingCreatine">–</b></div><div><span>Bänder</span><b id="settingBands">–</b></div><div><span>Training</span><b id="settingTrainingDays">–</b></div><div><span>Schlaf typisch</span><b id="settingSleep">–</b></div></div></div>
+      </details>
+
+      <details class="surface accordion-card settings-accordion ai-settings-card">
+        <summary><span class="summary-icon">✦</span><span><b>KI Coach</b><small>Eigener Gemini API-Key</small></span><span id="geminiConnectionBadge" class="mode-badge subtle">NICHT VERBUNDEN</span></summary>
+        <div class="accordion-body">
+          <p class="support-copy">Der Key bleibt nur auf diesem Gerät und wird nicht ins Backup übernommen.</p>
+          <label class="field-label">Gemini API-Key<div class="ai-key-row"><input id="geminiApiKey" type="password" autocomplete="off" spellcheck="false" placeholder="AIza…"><button id="toggleGeminiKey" class="icon-button wide" type="button">Anzeigen</button></div></label>
+          <div class="action-stack"><button id="saveGeminiKey" class="primary full" type="button">Key speichern</button><button id="testGeminiKey" class="secondary full" type="button">Verbindung testen</button><button id="deleteGeminiKey" class="text-action danger-text full" type="button">Key löschen</button></div>
+          <div id="geminiKeyMessage" class="status"></div>
+          <div class="toggle-list">
+            <label><input id="aiAutoDaily" type="checkbox"><span><b>Nach Tagescheck</b><small>Recovery automatisch bewerten</small></span></label>
+            <label><input id="aiAutoTraining" type="checkbox"><span><b>Beim Training</b><small>Satzfeedback + Abschlussanalyse</small></span></label>
+            <label><input id="aiAutoFood" type="checkbox"><span><b>Beim Essen</b><small>Makros und Tagesziel interpretieren</small></span></label>
+          </div>
+        </div>
+      </details>
+
+      <details class="surface accordion-card settings-accordion">
+        <summary><span class="summary-icon">⇩</span><span><b>Daten & Backup</b><small>Lokal auf diesem Gerät</small></span></summary>
+        <div class="accordion-body">
+          <div class="action-stack"><button id="exportBtn" class="secondary full" type="button">Backup exportieren</button><label class="file-btn full">Backup importieren<input id="importFile" type="file" accept="application/json"></label><button id="resetBtn" class="text-action danger-text full" type="button">Alle Daten löschen</button></div>
+        </div>
+      </details>
     </section>
   </main>
 
   <nav class="bottom-nav" aria-label="Hauptnavigation">
-    <button class="nav-btn active" data-target="today"><span>⌂</span>Heute</button>
-    <button class="nav-btn" data-target="train"><span>◉</span>Training</button>
-    <button class="nav-btn" data-target="food"><span>◫</span>Essen</button>
-    <button class="nav-btn" data-target="stats"><span>↗</span>Fortschritt</button>
-    <button class="nav-btn" data-target="settings"><span>⚙</span>Mehr</button>
+    <button class="nav-btn active" data-target="today" type="button" aria-label="Heute">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3l8.5 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-4.5v-6h-5v6H5a1.5 1.5 0 0 1-1.5-1.5z"/></svg><span>Heute</span>
+    </button>
+    <button class="nav-btn" data-target="train" type="button" aria-label="Training">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9v6M3 10.5v3M19 9v6M21 10.5v3M5 12h14"/></svg><span>Training</span>
+    </button>
+    <button class="nav-btn" data-target="food" type="button" aria-label="Essen">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v7a3 3 0 0 0 3 3V3M6 7h3M9 13v8M16 3v18M16 3c3 2 4 5 4 8h-4"/></svg><span>Essen</span>
+    </button>
+    <button class="nav-btn" data-target="stats" type="button" aria-label="Fortschritt">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18V9M10 18V5M16 18v-7M22 18V3"/></svg><span>Fortschritt</span>
+    </button>
+    <button class="nav-btn" data-target="settings" type="button" aria-label="Mehr">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14"/></svg><span>Mehr</span>
+    </button>
   </nav>
 
+  <!-- Guided onboarding/check/food overlay -->
   <div id="guidedOverlay" class="guided-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="guidedTitle">
     <div class="guided-flow-shell">
       <div class="guided-flow-top">
@@ -475,16 +431,13 @@
     </div>
   </div>
 
+  <!-- Rest timer -->
   <div id="timerOverlay" class="timer-overlay hidden" role="dialog" aria-modal="true">
     <div class="timer-card">
-      <div class="eyebrow" id="timerLabel">Pause</div>
+      <p class="section-label" id="timerLabel">Pause</p>
       <div id="timerValue" class="timer-value">02:00</div>
       <div id="timerCoachLine" class="timer-coach-line hidden"></div>
-      <div class="timer-actions">
-        <button id="timerMinus" class="small-btn" type="button">−15 s</button>
-        <button id="timerSkip" class="secondary" type="button">Überspringen</button>
-        <button id="timerPlus" class="small-btn" type="button">+15 s</button>
-      </div>
+      <div class="timer-actions"><button id="timerMinus" class="icon-button wide" type="button">−15 s</button><button id="timerSkip" class="primary" type="button">Weiter</button><button id="timerPlus" class="icon-button wide" type="button">+15 s</button></div>
     </div>
   </div>
 
