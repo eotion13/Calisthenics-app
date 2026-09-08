@@ -1,7 +1,7 @@
 'use strict';
 
 const STORE_KEY = 'calisthenicsCoach_v2'; // bewusst gleich: V2-Daten bleiben erhalten
-const VERSION = '5.0.1';
+const VERSION = '5.0.2';
 const GEMINI_KEY_STORE = 'calisthenicsCoach_geminiKey_v1';
 const GEMINI_MODEL = 'gemini-3.5-flash-lite';
 
@@ -985,7 +985,10 @@ function renderWorkoutTabs() {
 function renderTrainingOverview() {
   const root = document.getElementById('trainingOverview'); const coach = document.getElementById('guidedCoach');
   if (guided) {
-    document.body.classList.add('workout-mode');
+    // Eine gespeicherte/offene Session darf die globale Navigation auf Heute nicht verstecken.
+    // Fokusmodus gilt nur, wenn der Training-Tab tatsächlich sichtbar ist.
+    const trainViewActive = document.getElementById('train')?.classList.contains('active');
+    document.body.classList.toggle('workout-mode', !!trainViewActive);
     root.classList.add('hidden'); coach.classList.remove('hidden'); renderGuided(); return;
   }
   document.body.classList.remove('workout-mode');

@@ -32,4 +32,10 @@ V5 ist der komplette UI/UX-Neubau der bisherigen Guided-AI-App. Die vorhandenen 
 - PWA + Offline-Cache
 
 ## Version
-V5.0.1
+V5.0.2
+
+
+## V5.0.2 – Navigation Fix
+- Die untere Hauptnavigation bleibt jetzt auch während eines laufenden/fortgesetzten Trainings sichtbar.
+- Wechsel zu Heute, Essen, Fortschritt oder Mehr ist jederzeit möglich; die offene Trainingseinheit bleibt gespeichert und kann später fortgesetzt werden.
+- Zusätzlicher Abstand unten verhindert, dass die Navigation Satz-Eingaben verdeckt.
