@@ -230,3 +230,151 @@ body.workout-mode #train > details{display:none}
 body.workout-mode .bottom-nav{display:grid!important;transform:translateX(-50%)!important;pointer-events:auto!important}
 body.workout-mode{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 18px)!important}
 body.workout-mode #guidedCoach{padding-bottom:12px}
+
+/* V5.2 Adaptive Pro · hierarchy + plan management + analytics */
+.progression-focus-card{padding:16px}
+.progression-focus-card h2{font-size:1.12rem;max-width:270px}
+.minimal-progressions{display:grid;gap:7px;margin-top:13px}
+.minimal-progressions .progression-item{padding:11px 12px;border-radius:14px;background:var(--bg-elev);border:1px solid rgba(255,255,255,.045)}
+.minimal-progressions .progression-item strong{font-size:.76rem;line-height:1.25}
+.minimal-progressions .progression-item span{display:block;margin-top:3px;font-size:.66rem;color:var(--muted);line-height:1.45}
+
+.plan-manager-card{padding:16px}
+.plan-manager-intro{margin:7px 0 12px}
+.add-day-button{font-size:1.15rem}
+.training-plan-manager-list{display:grid;gap:7px}
+.managed-plan-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;align-items:stretch;background:var(--bg-elev);border:1px solid rgba(255,255,255,.045);border-radius:15px;padding:6px;transition:border-color .16s var(--ease),background .16s var(--ease)}
+.managed-plan-row.selected{border-color:rgba(120,224,196,.22);background:rgba(120,224,196,.035)}
+.managed-plan-main{min-width:0;border:0;background:transparent;color:var(--text);display:grid;grid-template-columns:44px minmax(0,1fr);align-items:center;gap:10px;text-align:left;padding:6px}
+.managed-day{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:var(--surface-2);border:1px solid var(--line);color:var(--accent);font-size:.67rem;font-weight:850}
+.managed-plan-main b{display:block;font-size:.78rem;line-height:1.2}
+.managed-plan-main small{display:block;font-size:.64rem;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.managed-plan-main em{display:block;font-size:.59rem;font-style:normal;color:var(--muted-2);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.managed-plan-edit{border:0;background:transparent;color:var(--accent);font-size:.65rem;font-weight:780;padding:0 8px;border-radius:11px}
+.plan-coach-box{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:11px;padding:10px 11px;border-radius:14px;background:rgba(120,224,196,.045);border:1px solid rgba(120,224,196,.10)}
+.plan-coach-box>div{min-width:0;display:grid;gap:2px}.plan-coach-box b{font-size:.72rem}.plan-coach-box small{font-size:.62rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.plan-coach-box .text-action{font-size:.68rem;white-space:nowrap}
+
+.food-trend-card,.exercise-progress-card{padding:16px}
+.compact-stat-tabs{margin:13px 0 9px}
+.food-trend-card canvas,.exercise-progress-card canvas{width:100%;height:230px;border-radius:15px;overflow:hidden;display:block}
+.exercise-stat-select-label{margin-top:13px}
+.exercise-stat-select-label select{margin-top:6px}
+.exercise-stat-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:10px 0}
+.exercise-stat-summary>div{padding:10px;background:var(--bg-elev);border:1px solid rgba(255,255,255,.04);border-radius:13px;min-width:0}
+.exercise-stat-summary span{display:block;font-size:.58rem;color:var(--muted);margin-bottom:3px}
+.exercise-stat-summary b{display:block;font-size:.72rem;line-height:1.25;word-break:break-word}
+
+.target-settings-block{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.target-reference-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}.target-reference-head h3{margin-top:3px}.target-reference-head strong{font-size:1.18rem;letter-spacing:-.03em;color:var(--accent)}
+.target-settings-block>.micro-copy{margin:7px 0 12px}
+.calorie-method-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.inline-setting-panel{margin-top:10px;padding:11px;border-radius:14px;background:var(--bg-elev);border:1px solid rgba(255,255,255,.05)}
+.inline-setting-panel .field-label{margin-bottom:9px}
+.inline-setting-panel .micro-copy{line-height:1.5}
+
+.sheet-open{overflow:hidden}
+.sheet-overlay{position:fixed;inset:0;z-index:210;background:rgba(3,8,13,.78);backdrop-filter:blur(12px);display:flex;align-items:flex-end;justify-content:center;padding:10px 10px calc(10px + env(safe-area-inset-bottom))}
+.sheet-card{width:min(var(--maxw),100%);max-height:min(88vh,760px);overflow:auto;background:var(--surface);border:1px solid var(--line-strong);border-radius:26px;padding:10px 14px 16px;box-shadow:0 -20px 80px rgba(0,0,0,.28)}
+.sheet-handle{width:38px;height:4px;border-radius:99px;background:rgba(255,255,255,.15);margin:1px auto 10px}
+.sheet-header{position:sticky;top:-10px;z-index:4;display:flex;align-items:center;justify-content:space-between;gap:12px;background:linear-gradient(180deg,var(--surface) 82%,rgba(16,27,39,0));padding:6px 0 15px}
+.sheet-header h2{font-size:1.2rem;letter-spacing:-.025em;margin-top:2px}
+.plan-editor-body{padding-bottom:4px}
+.plan-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.plan-meta-grid .field-label:first-child{grid-column:1/-1}
+.plan-editor-section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin:18px 0 8px}
+.plan-exercise-editor{display:grid;gap:7px}
+.plan-exercise-row{background:var(--bg-elev);border:1px solid rgba(255,255,255,.045);border-radius:15px;padding:8px}
+.plan-exercise-top{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:7px;align-items:center}
+.plan-order{width:26px;height:26px;border-radius:9px;display:grid;place-items:center;background:var(--surface-2);color:var(--muted);font-size:.62rem;font-weight:800}
+.plan-exercise-top select{width:100%;min-width:0;border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:11px;padding:9px 10px;font-size:.7rem;outline:none}
+.plan-row-actions{display:flex;gap:3px}.plan-row-actions button{width:28px;height:28px;border:0;border-radius:9px;background:var(--surface-2);color:var(--muted);font-weight:800;padding:0}
+.plan-prescription{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:7px;padding-left:35px}
+.plan-prescription label{font-size:.55rem;color:var(--muted)}
+.plan-prescription input{width:100%;margin-top:3px;border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:9px;padding:7px 6px;font-size:.66rem;outline:none}
+.plan-prescription.special{display:block;font-size:.62rem;color:var(--muted);padding:7px 0 0 35px}
+.plan-editor-footer{display:grid;gap:8px;margin-top:14px}
+.planner-intro{text-align:center;padding:8px 10px 15px}.planner-orb{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;margin:0 auto 10px;background:var(--accent-soft);color:var(--accent);font-size:1.2rem}.planner-intro h3{font-size:1.05rem}.planner-intro p{font-size:.72rem;color:var(--muted);line-height:1.5;margin-top:6px}
+.plan-request{width:100%;resize:vertical;margin-top:6px;border:1px solid var(--line);background:var(--bg-elev);color:var(--text);border-radius:14px;padding:12px;line-height:1.45;outline:none}
+.plan-request:focus{border-color:rgba(120,224,196,.35)}
+.ai-plan-note{margin-bottom:10px;padding:10px 11px;border-radius:13px;background:var(--accent-soft);color:var(--text-soft);font-size:.67rem;line-height:1.45}
+.coach-suggestion-list{display:grid;gap:8px}.coach-suggestion-list article{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:11px;border-radius:14px;background:var(--bg-elev);border:1px solid rgba(255,255,255,.045)}.coach-suggestion-list h3{font-size:.78rem;margin:3px 0}.coach-suggestion-list p{font-size:.65rem;color:var(--muted);line-height:1.4}.coach-suggestion-list .secondary{min-height:38px;padding:8px 10px;font-size:.65rem}
+.empty-state{padding:20px 12px;text-align:center;color:var(--muted);font-size:.76rem;line-height:1.5}
+
+/* In focused workout mode only the plan library/history hide; bottom navigation remains usable. */
+body.workout-mode #trainingPlanManager,body.workout-mode #trainingHistoryCard{display:none!important}
+
+@media(max-width:390px){
+  .managed-plan-main{grid-template-columns:40px minmax(0,1fr)}.managed-day{width:38px;height:38px}
+  .managed-plan-edit{padding:0 5px}
+  .exercise-stat-summary{grid-template-columns:1fr 1fr}.exercise-stat-summary>div:last-child{grid-column:1/-1}
+  .plan-meta-grid{grid-template-columns:1fr}.plan-meta-grid .span-2,.plan-meta-grid .field-label:first-child{grid-column:1}
+  .plan-prescription{grid-template-columns:repeat(2,1fr)}
+}
+
+/* V5.2 — adaptive exercise target kept inside the existing target card */
+.adaptive-target-copy{
+  display:block;
+  margin-top:8px;
+  max-width:32rem;
+  color:var(--muted);
+  font-size:.82rem;
+  line-height:1.42;
+  font-weight:600;
+}
+.target-box .adaptive-target-copy{grid-column:1/-1}
+
+/* V5.2 · calorie reference */
+.dual-calorie-input{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end}
+.dual-calorie-input .field-label small{font-size:11px;font-weight:600;color:var(--muted)}
+@media(max-width:390px){.dual-calorie-input{grid-template-columns:1fr}}
+
+/* V5.3 — calmer surfaces, accessible motion, personal display */
+:root{color-scheme:dark;--accent:#78e7ba;--bg:#0b1116}
+body{background:#0b1116;font-size:16px;line-height:1.5}
+.surface,.card{background:#121c24;border:1px solid #26323b;box-shadow:none;border-radius:20px}
+.screen-header h1{letter-spacing:-.04em;font-size:clamp(2rem,6vw,2.65rem)}
+.screen-kicker{font-size:13px;color:#a5b7c4;letter-spacing:.06em}
+.surface h2{font-size:1.25rem;line-height:1.3;letter-spacing:-.02em}
+.support-copy,.micro-copy,.settings-row small,.toggle-list small{color:#aabac6}
+.support-copy{font-size:1rem}.micro-copy,.settings-row small,.toggle-list small{font-size:.875rem;line-height:1.55}
+.screen-header{padding-top:20px}.surface{margin-bottom:16px;padding:20px}
+.daily-check-card{background:transparent;border-color:#2b3a44}
+.workout-hero{background:linear-gradient(125deg,#142c28,#131d25);border-color:#355b4e}
+.primary{background:#78e7ba;color:#0b2118;border-radius:13px;min-height:48px;box-shadow:none;font-weight:700}
+.secondary,.settings-row,.nav-btn,.text-action,summary,select{min-height:44px}
+button,input,select,textarea{font-size:1rem}button{touch-action:manipulation}
+button:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #8bbfff;outline-offset:4px}
+button:active{transform:scale(.98)}
+input,textarea,select{max-width:100%;min-width:0}
+.bottom-nav{background:rgba(13,21,28,.96);border-top:1px solid #293943;backdrop-filter:blur(16px)}
+.nav-btn span{font-size:12px}.nav-btn.active{color:#8ef1c8}
+.view.active{animation:screen-enter .24s ease-out}.feature-off{display:none!important}
+.without-images .exercise-photo{display:none!important}
+.activity-number{font-size:2rem;color:#8beac2;letter-spacing:-.06em;white-space:nowrap}
+.activity-bars{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px;margin:22px 0 16px}
+.activity-day{display:flex;align-items:center;flex-direction:column;gap:6px;font-size:14px;color:#95a9b8}
+.activity-day.is-today b{color:#94f4ce}.activity-track{height:76px;background:#1d2a34;border-radius:8px;width:100%;display:flex;align-items:flex-end;overflow:hidden}
+.activity-track span{height:var(--fill);background:#354b5b;width:100%;border-radius:8px;transform-origin:bottom;animation:bar-enter .65s cubic-bezier(.2,.7,.2,1) both;animation-delay:var(--delay)}
+.activity-track .has-activity{background:linear-gradient(#9af4cd,#47b88d)}
+.activity-day small{font-size:12px}.chart-accessible{min-height:24px;margin:8px 0 0}
+canvas{width:100%;height:240px;touch-action:pan-y}
+.progress-track span,.bar span{transition:width .7s cubic-bezier(.2,.7,.2,1)}
+.library-exercise .exercise-photo{max-height:360px;width:100%;object-fit:contain;background:#0c1420;border-radius:14px}
+.library-exercise summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:12px}
+.library-exercise summary:after{content:'＋';color:#8beac2}.library-exercise[open] summary:after{content:'−'}
+.library-exercise summary b,.library-exercise summary small{display:block}.library-exercise summary small{font-size:14px;color:#aabac6;margin-top:3px}
+.image-caption{font-size:12px;color:#aabac6;margin:8px 0 16px}
+#preferences .utility-bar{position:static;display:flex!important;visibility:visible;justify-content:space-between;padding:16px;height:auto;opacity:1}
+#preferences .toggle-list label{padding:16px 0;display:flex;gap:14px;align-items:center;border-bottom:1px solid #293640}
+#preferences .toggle-list input[type=checkbox]{appearance:none;flex:0 0 44px;width:44px;height:26px;min-height:26px;border-radius:20px;background:#384853;border:0;position:relative;cursor:pointer;transition:background .2s}
+#preferences .toggle-list input[type=checkbox]:after{content:'';position:absolute;width:20px;height:20px;border-radius:50%;left:3px;top:3px;background:#e9f2f6;transition:transform .2s}
+#preferences .toggle-list input:checked{background:#49ae86}#preferences .toggle-list input:checked:after{transform:translateX(18px)}
+#preferences .toggle-list b,#preferences .toggle-list small{display:block}
+.app-notice{position:fixed;z-index:9999;bottom:100px;left:16px;right:16px;padding:16px;background:#593028;color:#fff;border-radius:12px}
+@keyframes screen-enter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes bar-enter{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+.reduce-motion *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+@media(max-width:390px){.surface{padding:16px}.activity-bars{gap:8px}.metric-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.screen-header h1{font-size:2rem}}
+@media(min-width:800px){.app-shell{max-width:820px;margin:auto}#exerciseLibrary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}.bottom-nav{max-width:820px;left:50%;transform:translateX(-50%)}}
+.without-ai .context-ai-inline,.without-ai .flow-ai-box,.without-ai #foodAiCard,.without-ai #timerCoachLine,.without-ai #aiMealEntryCard,.without-ai #aiCoachCard{display:none!important}
