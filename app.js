@@ -306,9 +306,9 @@ Object.assign(EX, {
  gluteBridge:{name:'Glute Bridge',cat:'Beine',visual:'gluteBridge',cues:['Rückenlage, Knie beugen, Füße hüftbreit aufstellen.','Hüfte anheben, bis Schulter, Hüfte und Knie eine Linie bilden.'],mistakes:['Ins Hohlkreuz drücken.'],progress:'3×15 kontrolliert → oben länger halten.'},
  squat:{name:'Kniebeugen',cat:'Beine',visual:'squat',cues:['Füße etwa schulterbreit, Knie folgen den Fußspitzen.','So tief gehen, wie Fersen und Rumpf stabil bleiben.'],mistakes:['Fersen heben.','Knie nach innen fallen lassen.'],progress:'3×15 sauber → Split Squat.'}
 });
-const VISUAL_ASSETS = {'warmup': 'assets/exercises/warmup.webp', 'handstand': 'assets/exercises/handstand.webp', 'pullup': 'assets/exercises/pullup.webp', 'pullupBand': 'assets/exercises/pullupBand.webp', 'dip': 'assets/exercises/dip.webp', 'row': 'assets/exercises/row.webp', 'split': 'assets/exercises/split.webp', 'pike': 'assets/exercises/pike.webp', 'pistol': 'assets/exercises/pistol.webp', 'kneeRaise': 'assets/exercises/kneeRaise.webp', 'hang': 'assets/exercises/hang.webp', 'pushup': 'assets/exercises/pushup.webp', 'bandRow': 'assets/exercises/bandRow.webp', 'facePull': 'assets/exercises/facePull.webp', 'sidePlank': 'assets/exercises/sidePlank.webp', 'hollow': 'assets/exercises/hollow.webp', 'circles': 'assets/exercises/circles.webp', 'wrists': 'assets/exercises/wrists.webp', 'pullapart': 'assets/exercises/pullapart.webp', 'external': 'assets/exercises/external.webp', 'scapPull': 'assets/exercises/scapPull.webp', 'scapPush': 'assets/exercises/scapPush.webp'};
+const VISUAL_ASSETS = {'warmup': 'warmup.webp', 'handstand': 'handstand.webp', 'pullup': 'pullup.webp', 'pullupBand': 'pullupBand.webp', 'dip': 'dip.webp', 'row': 'row.webp', 'split': 'split.webp', 'pike': 'pike.webp', 'pistol': 'pistol.webp', 'kneeRaise': 'kneeRaise.webp', 'hang': 'hang.webp', 'pushup': 'pushup.webp', 'bandRow': 'bandRow.webp', 'facePull': 'facePull.webp', 'sidePlank': 'sidePlank.webp', 'hollow': 'hollow.webp', 'circles': 'circles.webp', 'wrists': 'wrists.webp', 'pullapart': 'pullapart.webp', 'external': 'external.webp', 'scapPull': 'scapPull.webp', 'scapPush': 'scapPush.webp'};
 
-Object.assign(VISUAL_ASSETS, {'elevatedPike': 'assets/exercises/elevatedPike.png', 'wallHspu': 'assets/exercises/wallHspu.png', 'hangingLegRaise': 'assets/exercises/hangingLegRaise.png', 'towelHang': 'assets/exercises/towelHang.png', 'declinePushup': 'assets/exercises/declinePushup.png', 'feetElevatedRow': 'assets/exercises/feetElevatedRow.png', 'pistolSquat': 'assets/exercises/pistolSquat.png', 'toesToBar': 'assets/exercises/toesToBar.png', 'pseudoPlanchePushup': 'assets/exercises/pseudoPlanchePushup.png', 'inclinePushup': 'assets/exercises/inclinePushup.png', 'gluteBridge': 'assets/exercises/gluteBridge.png', 'squat': 'assets/exercises/squat.png'});
+Object.assign(VISUAL_ASSETS, {'elevatedPike': 'elevatedPike.png', 'wallHspu': 'wallHspu.png', 'hangingLegRaise': 'hangingLegRaise.png', 'towelHang': 'towelHang.png', 'declinePushup': 'declinePushup.png', 'feetElevatedRow': 'feetElevatedRow.png', 'pistolSquat': 'pistolSquat.png', 'toesToBar': 'toesToBar.png', 'pseudoPlanchePushup': 'pseudoPlanchePushup.png', 'inclinePushup': 'inclinePushup.png', 'gluteBridge': 'gluteBridge.png', 'squat': 'squat.png'});
 EX['elevatedPike'].visual='elevatedPike';
 EX['wallHspu'].visual='wallHspu';
 EX['hangingLegRaise'].visual='hangingLegRaise';
@@ -322,7 +322,7 @@ EX['inclinePushup'].visual='inclinePushup';
 EX['gluteBridge'].visual='gluteBridge';
 EX['squat'].visual='squat';
 EX.wallHspuNegative.visual='wallHspu'; EX.wallHspuPartial.visual='wallHspu';
-VISUAL_ASSETS.assistedDips='assets/exercises/assistedDips.png';EX.assistedDips.visual='assistedDips';
+VISUAL_ASSETS.assistedDips='assistedDips.png';EX.assistedDips.visual='assistedDips';
 
 function visualHTML(kind, compact = false, alt = '') {
   const src = VISUAL_ASSETS[kind] || VISUAL_ASSETS.warmup;
